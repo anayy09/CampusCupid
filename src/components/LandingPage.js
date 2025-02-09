@@ -4,6 +4,7 @@ import FavoriteIcon from "@mui/icons-material/Favorite";
 import PeopleIcon from "@mui/icons-material/People";
 import SecurityIcon from "@mui/icons-material/Security";
 import { styled } from "@mui/system";
+import { useNavigate } from "react-router-dom"; // Import useNavigate
 
 // Tinder color palette
 const colors = {
@@ -82,6 +83,8 @@ const StyledButton = styled(Button)({
 });
 
 const LandingPage = () => {
+  const navigate = useNavigate(); // Initialize useNavigate
+
   return (
     <div>
       <HeroSection>
@@ -91,7 +94,11 @@ const LandingPage = () => {
         <Typography variant="h5" paragraph>
           Join millions of people connecting through love
         </Typography>
-        <StyledButton variant="contained" size="large">
+        <StyledButton 
+          variant="contained" 
+          size="large"
+          onClick={() => navigate("/login")} // Navigate to login
+        >
           Get Started
         </StyledButton>
       </HeroSection>
@@ -161,6 +168,7 @@ const LandingPage = () => {
         <StyledButton 
           variant="contained" 
           size="large"
+          onClick={() => navigate("/login")} // Navigate to login
           sx={{ 
             backgroundColor: colors.orange,
             "&:hover": {
@@ -176,4 +184,3 @@ const LandingPage = () => {
 };
 
 export default LandingPage;
-
