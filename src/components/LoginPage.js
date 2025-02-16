@@ -8,9 +8,40 @@ import {
   Paper,
   Link,
   ThemeProvider,
-  createTheme
+  createTheme,
+  styled
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
+
+// Custom styled TextField
+const StyledTextField = styled(TextField)({
+  '& label.Mui-focused': {
+    color: '#FE3C72',
+  },
+  '& .MuiInput-underline:after': {
+    borderBottomColor: '#FE3C72',
+  },
+  '& .MuiOutlinedInput-root': {
+    '& fieldset': {
+      borderColor: '#rgba(0, 0, 0, 0.23)',
+    },
+    '&:hover fieldset': {
+      borderColor: '#FF6036',
+    },
+    '&.Mui-focused fieldset': {
+      borderColor: '#FE3C72',
+    },
+  },
+  '& .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-input': {
+    color: '#FE3C72',
+  },
+  '& .MuiInputBase-input': {
+    '&::placeholder': {
+      color: '#FF6036',
+      opacity: 1,
+    },
+  },
+});
 
 // Tinder-inspired theme
 const theme = createTheme({
@@ -81,12 +112,12 @@ function LoginPage() {
             </Typography>
 
             <Box component="form" sx={{ width: '100%' }}>
-              <TextField
+              <StyledTextField
                 margin="normal"
                 required
                 fullWidth
                 id="email"
-                label="School Email"
+                label="Email"
                 name="email"
                 autoComplete="email"
                 autoFocus
@@ -94,7 +125,7 @@ function LoginPage() {
                 onChange={(e) => setEmail(e.target.value)}
                 sx={{ mb: 2 }}
               />
-              <TextField
+              <StyledTextField
                 margin="normal"
                 required
                 fullWidth
