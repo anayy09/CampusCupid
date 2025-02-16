@@ -141,7 +141,7 @@ function SignUpPage() {
             />
             <StyledTextField
               fullWidth
-              label="School Email"
+              label="Email"
               type="email"
               value={formData.email}
               onChange={handleInputChange('email')}
