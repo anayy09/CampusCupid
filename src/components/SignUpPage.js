@@ -134,10 +134,14 @@ function SignUpPage() {
           <Box sx={{ mt: 2 }}>
             <StyledTextField
               fullWidth
+              color="primary"
               label="First Name"
               value={formData.firstName}
               onChange={handleInputChange('firstName')}
               margin="normal"
+              InputProps={{
+          style: { color: '#757575' }, // Tinder's gray color
+              }}
             />
             <StyledTextField
               fullWidth
@@ -146,6 +150,9 @@ function SignUpPage() {
               value={formData.email}
               onChange={handleInputChange('email')}
               margin="normal"
+              InputProps={{
+          style: { color: '#757575' }, // Tinder's gray color
+              }}
             />
             <StyledTextField
               fullWidth
@@ -155,13 +162,16 @@ function SignUpPage() {
               onChange={handleInputChange('dateOfBirth')}
               margin="normal"
               InputLabelProps={{
-                shrink: true,
+          shrink: true,
+              }}
+              InputProps={{
+          style: { color: '#757575' }, // Tinder's gray color
               }}
             />
           </Box>
         );
 
-      case 1:
+            case 1:
         return (
           <Box sx={{ mt: 2 }}>
             <FormControl component="fieldset" sx={{ mb: 3, width: '100%' }}>
@@ -261,6 +271,7 @@ function SignUpPage() {
         return null;
     }
   };
+  
 
   return (
     <ThemeProvider theme={theme}>
