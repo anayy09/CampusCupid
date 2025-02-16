@@ -99,7 +99,7 @@ const LandingPage = () => {
           size="large"
           onClick={() => navigate("/login")} // Navigate to login
         >
-          Get Started
+          Login 
         </StyledButton>
       </HeroSection>
 
@@ -168,7 +168,7 @@ const LandingPage = () => {
         <StyledButton 
           variant="contained" 
           size="large"
-          onClick={() => navigate("/login")} // Navigate to login
+          onClick={() => navigate("signup")} // Navigate to login
           sx={{ 
             backgroundColor: colors.orange,
             "&:hover": {
