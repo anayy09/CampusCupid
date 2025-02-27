@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import Autocomplete from '@mui/material/Autocomplete';
+import Chip from '@mui/material/Chip';
 import {
   Container,
   TextField,
@@ -69,6 +71,42 @@ const ImageUploadBox = styled(Box)({
   },
 });
 
+// List of suggested interests for the autocomplete field
+const suggestedInterests = [
+  'Dancing',
+  'Stand-up Comedy',
+  'Photography',
+  'Cooking',
+  'Hiking',
+  'Travel',
+  'Reading',
+  'Movies',
+  'Music',
+  'Art',
+  'Fitness',
+  'Yoga',
+  'Gaming',
+  'Technology',
+  'Fashion',
+  'Coffee',
+  'Wine Tasting',
+  'Board Games',
+  'Volunteering',
+  'Podcasts',
+  'Sports',
+  'Foodie',
+  'Meditation',
+  'Shopping',
+  'Swimming',
+  'Cycling',
+  'Singing',
+  'Painting',
+  'Writing',
+  'Pets',
+  'Nature',
+  'Gardening'
+];
+
 function SignUpPage() {
   const navigate = useNavigate();
   const [activeStep, setActiveStep] = useState(0);
@@ -84,11 +122,41 @@ function SignUpPage() {
     photos: [],
   });
   const [previewUrls, setPreviewUrls] = useState([]);
+  const [errors, setErrors] = useState({
+    dateOfBirth: '',
+  });
 
   const steps = ['Basic Info', 'Preferences', 'Photos'];
 
+  // Validate age (18+)
+  const validateAge = (dateString) => {
+    const today = new Date();
+    const birthDate = new Date(dateString);
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+    
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+    
+    if (age < 18) {
+      setErrors({...errors, dateOfBirth: 'You must be at least 18 years old to register'});
+      return false;
+    } else {
+      setErrors({...errors, dateOfBirth: ''});
+      return true;
+    }
+  };
+
   const handleNext = () => {
-    setActiveStep((prevStep) => prevStep + 1);
+    if (activeStep === 0) {
+      // Check if user is 18+ before proceeding
+      if (formData.dateOfBirth && validateAge(formData.dateOfBirth)) {
+        setActiveStep((prevStep) => prevStep + 1);
+      }
+    } else {
+      setActiveStep((prevStep) => prevStep + 1);
+    }
   };
 
   const handleBack = () => {
@@ -99,6 +167,22 @@ function SignUpPage() {
     setFormData({
       ...formData,
       [field]: event.target.value,
+    });
+  };
+
+  const handleDateOfBirthChange = (event) => {
+    const newDob = event.target.value;
+    setFormData({
+      ...formData,
+      dateOfBirth: newDob,
+    });
+    validateAge(newDob);
+  };
+
+  const handleInterestsChange = (event, newValue) => {
+    setFormData({
+      ...formData,
+      interests: newValue
     });
   };
 
@@ -140,7 +224,7 @@ function SignUpPage() {
               onChange={handleInputChange('firstName')}
               margin="normal"
               InputProps={{
-          style: { color: '#757575' }, // Tinder's gray color
+                style: { color: '#757575' }, // Tinder's gray color
               }}
             />
             <StyledTextField
@@ -151,7 +235,7 @@ function SignUpPage() {
               onChange={handleInputChange('email')}
               margin="normal"
               InputProps={{
-          style: { color: '#757575' }, // Tinder's gray color
+                style: { color: '#757575' }, // Tinder's gray color
               }}
             />
             <StyledTextField
@@ -159,19 +243,21 @@ function SignUpPage() {
               label="Date of Birth"
               type="date"
               value={formData.dateOfBirth}
-              onChange={handleInputChange('dateOfBirth')}
+              onChange={handleDateOfBirthChange}
               margin="normal"
+              error={!!errors.dateOfBirth}
+              helperText={errors.dateOfBirth}
               InputLabelProps={{
-          shrink: true,
+                shrink: true,
               }}
               InputProps={{
-          style: { color: '#757575' }, // Tinder's gray color
+                style: { color: '#757575' }, // Tinder's gray color
               }}
             />
           </Box>
         );
 
-            case 1:
+      case 1:
         return (
           <Box sx={{ mt: 2 }}>
             <FormControl component="fieldset" sx={{ mb: 3, width: '100%' }}>
@@ -210,6 +296,43 @@ function SignUpPage() {
                 <FormControlLabel value="friendship" control={<Radio />} label="Friendship" />
               </RadioGroup>
             </FormControl>
+
+            {/* New Interests field with scrollable dropdown */}
+            <Box sx={{ mb: 3, width: '100%' }}>
+              <FormLabel component="legend" sx={{ mb: 1 }}>Your Interests</FormLabel>
+              <Autocomplete
+                multiple
+                id="interests-tags"
+                options={suggestedInterests}
+                value={formData.interests}
+                onChange={handleInterestsChange}
+                freeSolo
+                ListboxProps={{
+                  style: { maxHeight: '150px', overflow: 'auto' }
+                }}
+                renderTags={(value, getTagProps) =>
+                  value.map((option, index) => (
+                    <Chip
+                      variant="outlined"
+                      label={option}
+                      {...getTagProps({ index })}
+                      sx={{ 
+                        borderColor: theme.palette.primary.main,
+                        margin: '2px' 
+                      }}
+                    />
+                  ))
+                }
+                renderInput={(params) => (
+                  <StyledTextField
+                    {...params}
+                    placeholder="Add your interests"
+                    helperText="Add up to 5 interests that define you"
+                  />
+                )}
+                sx={{ mt: 1 }}
+              />
+            </Box>
           </Box>
         );
 
