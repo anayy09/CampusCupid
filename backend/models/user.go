@@ -1,23 +1,24 @@
 package models
 
 import (
+	"time"
+
 	"golang.org/x/crypto/bcrypt" // Importing the bcrypt package for hashing passwords
-	"gorm.io/gorm"               // GORM ORM package for database handling
 )
 
-// User represents the user model in the database
-// It contains fields like username, email, password, etc.
 type User struct {
-	gorm.Model               // Embedding gorm.Model for automatic ID, timestamps, etc.
-	Username          string `gorm:"unique;not null"`  // Unique and non-nullable username
-	Email             string `gorm:"unique;not null"`  // Unique and non-nullable email
-	Password          string `gorm:"not null"`         // Non-nullable password field
-	Bio               string `gorm:"type:text"`        // Bio can be any length (stored as text)
-	Interests         string `gorm:"type:text"`        // Interests can be a large text field
-	ProfilePictureURL string `gorm:"type:text"`        // URL of the profile picture (stored as text)
-	AgeRange          string `gorm:"type:varchar(50)"` // Age range of the user (string of max length 50)
-	Distance          int    `gorm:"type:int"`         // Distance preference (in integer)
-	GenderPreference  string `gorm:"type:varchar(50)"` // Gender preference for potential matches
+	ID                uint      `gorm:"primaryKey"`       // Explicitly define ID field and set it as the primary key
+	Username          string    `gorm:"unique;not null"`  // Unique and non-nullable username
+	Email             string    `gorm:"unique;not null"`  // Unique and non-nullable email
+	Password          string    `gorm:"not null"`         // Non-nullable password field
+	Bio               string    `gorm:"type:text"`        // Bio can be any length (stored as text)
+	Interests         string    `gorm:"type:text"`        // Interests can be a large text field
+	ProfilePictureURL string    `gorm:"type:text"`        // URL of the profile picture (stored as text)
+	AgeRange          string    `gorm:"type:varchar(50)"` // Age range of the user (string of max length 50)
+	Distance          int       `gorm:"type:int"`         // Distance preference (in integer)
+	GenderPreference  string    `gorm:"type:varchar(50)"` // Gender preference for potential matches
+	CreatedAt         time.Time `gorm:"autoCreateTime"`   // Automatically set when a record is created
+	UpdatedAt         time.Time `gorm:"autoUpdateTime"`   // Automatically update when a record is modified
 }
 
 // LoginRequest is the structure for login requests containing username and password
@@ -28,8 +29,12 @@ type LoginRequest struct {
 
 // UpdateProfileRequest is used to update user profile details (bio and interests)
 type UpdateProfileRequest struct {
-	Bio       string `json:"bio"`       // User's bio to be updated
-	Interests string `json:"interests"` // User's interests to be updated
+	Bio               string `json:"bio"`
+	Interests         string `json:"interests"`
+	ProfilePictureURL string `json:"profile_picture"`
+	AgeRange          string `json:"age_range"`
+	Distance          int    `json:"distance"`
+	GenderPreference  string `json:"gender_preference"`
 }
 
 // UpdatePreferencesRequest is used to update user preferences like age range, distance, and gender preference
