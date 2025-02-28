@@ -54,6 +54,8 @@ func main() {
 	r.GET("/profile/:user_id", handlers.GetUserProfile)
 	//update profile info
 	r.POST("/profile/:user_id", handlers.UpdateUserProfile)
+	// update user preferences
+	r.POST("/preferences/:user_id", handlers.UpdateUserPreferences)
 	// Start the server on port 8080
 	r.Run(":8080")
 }
