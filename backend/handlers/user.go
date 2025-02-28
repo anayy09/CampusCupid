@@ -146,3 +146,64 @@ func GetUserProfile(c *gin.Context) {
 }
 
 // enter user information
+// UpdateUserProfile updates the profile details of the user by user_id
+// @Summary Update user profile by user_id
+// @Description Update the profile details of a user using the user_id
+// @Tags users
+// @Accept json
+// @Produce json
+// @Param user_id path uint true "User ID"
+// @Param user body models.UpdateProfileRequest true "Updated user details"
+// @Success 200 {object} map[string]string
+// @Failure 400 {object} map[string]string
+// @Failure 404 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /profile/{user_id} [put]
+// UpdateUserProfile updates the profile details of the user by user_id
+// @Summary Update user profile by user_id
+// @Description Update profile details such as bio, interests, and preferences (excluding ID, Username, Email, Password)
+// @Tags users
+// @Accept json
+// @Produce json
+// @Param user_id path uint true "User ID"
+// @Param profile body models.UpdateProfileRequest true "Updated profile details"
+// @Success 200 {object} map[string]string
+// @Failure 400 {object} map[string]string
+// @Failure 404 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /profile/{user_id} [put]
+func UpdateUserProfile(c *gin.Context) {
+	// Extract user_id from URL
+	var userID = c.Param("user_id")
+
+	// Retrieve user from database
+	var user models.User
+	if err := database.DB.Where("id=?", userID).First(&user).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+		return
+	}
+
+	// Bind request body to update struct
+	var updateData models.UpdateProfileRequest
+	if err := c.ShouldBindJSON(&updateData); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Update allowed fields
+	user.Bio = updateData.Bio
+	user.Interests = updateData.Interests
+	user.ProfilePictureURL = updateData.ProfilePictureURL
+	user.AgeRange = updateData.AgeRange
+	user.Distance = updateData.Distance
+	user.GenderPreference = updateData.GenderPreference
+
+	// Save changes to database
+	if err := database.DB.Save(&user).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not update profile"})
+		return
+	}
+
+	// Return success message
+	c.JSON(http.StatusOK, gin.H{"message": "Profile updated successfully"})
+}

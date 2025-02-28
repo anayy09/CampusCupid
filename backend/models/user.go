@@ -27,8 +27,12 @@ type LoginRequest struct {
 
 // UpdateProfileRequest is used to update user profile details (bio and interests)
 type UpdateProfileRequest struct {
-	Bio       string `json:"bio"`       // User's bio to be updated
-	Interests string `json:"interests"` // User's interests to be updated
+	Bio               string `json:"bio"`
+	Interests         string `json:"interests"`
+	ProfilePictureURL string `json:"profile_picture"`
+	AgeRange          string `json:"age_range"`
+	Distance          int    `json:"distance"`
+	GenderPreference  string `json:"gender_preference"`
 }
 
 // UpdatePreferencesRequest is used to update user preferences like age range, distance, and gender preference
