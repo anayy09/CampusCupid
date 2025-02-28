@@ -253,3 +253,5 @@ func UpdateUserPreferences(c *gin.Context) {
 	// Return success response
 	c.JSON(http.StatusOK, gin.H{"message": "Preferences updated successfully"})
 }
+
+// Matchmaking Page api's
