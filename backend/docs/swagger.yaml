@@ -9,6 +9,33 @@ definitions:
         description: Username for login
         type: string
     type: object
+  models.UpdatePreferencesRequest:
+    properties:
+      age_range:
+        description: Age range preference
+        type: string
+      distance:
+        description: Distance preference
+        type: integer
+      gender_preference:
+        description: Gender preference for matches
+        type: string
+    type: object
+  models.UpdateProfileRequest:
+    properties:
+      age_range:
+        type: string
+      bio:
+        type: string
+      distance:
+        type: integer
+      gender_preference:
+        type: string
+      interests:
+        type: string
+      profile_picture:
+        type: string
+    type: object
   models.User:
     properties:
       ageRange:
@@ -16,6 +43,9 @@ definitions:
         type: string
       bio:
         description: Bio can be any length (stored as text)
+        type: string
+      createdAt:
+        description: Automatically set when a record is created
         type: string
       distance:
         description: Distance preference (in integer)
@@ -37,6 +67,9 @@ definitions:
         type: string
       profilePictureURL:
         description: URL of the profile picture (stored as text)
+        type: string
+      updatedAt:
+        description: Automatically update when a record is modified
         type: string
       username:
         description: Unique and non-nullable username
@@ -91,6 +124,53 @@ paths:
       summary: Login a user
       tags:
       - users
+  /preferences/{user_id}:
+    put:
+      consumes:
+      - application/json
+      description: Update the user's age range, distance, and gender preference
+      parameters:
+      - description: User ID
+        in: path
+        name: user_id
+        required: true
+        type: integer
+      - description: User Preferences
+        in: body
+        name: preferences
+        required: true
+        schema:
+          $ref: '#/definitions/models.UpdatePreferencesRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Update user preferences
+      tags:
+      - users
   /profile/{user_id}:
     get:
       consumes:
@@ -129,6 +209,68 @@ paths:
             type: object
       summary: Get user profile by user_id
       tags:
+      - users
+    put:
+      consumes:
+      - application/json
+      - application/json
+      description: |-
+        Update the profile details of a user using the user_id
+        Update profile details such as bio, interests, and preferences (excluding ID, Username, Email, Password)
+      parameters:
+      - description: User ID
+        in: path
+        name: user_id
+        required: true
+        type: integer
+      - description: Updated user details
+        in: body
+        name: user
+        required: true
+        schema:
+          $ref: '#/definitions/models.UpdateProfileRequest'
+      - description: User ID
+        in: path
+        name: user_id
+        required: true
+        type: integer
+      - description: Updated profile details
+        in: body
+        name: profile
+        required: true
+        schema:
+          $ref: '#/definitions/models.UpdateProfileRequest'
+      produces:
+      - application/json
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Update user profile by user_id
+      tags:
+      - users
       - users
   /register:
     post:
