@@ -45,23 +45,22 @@ func main() {
 	// Swagger documentation route
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
-	//LOGIN APIS
+	// LOGIN APIS
 	// Public authentication routes
 	r.POST("/register", handlers.Register)
 	r.POST("/login", handlers.Login)
 
 	// USER PROFILE APIS
-	// new routes once logged in
-	//get profile info
+	// get profile info
 	r.GET("/profile/:user_id", handlers.GetUserProfile)
-	//update profile info
+	// update profile info
 	r.POST("/profile/:user_id", handlers.UpdateUserProfile)
 	// update user preferences
 	r.POST("/preferences/:user_id", handlers.UpdateUserPreferences)
 
 	// APIS ON MATCHMAING PAGE
 
-	//API FOR MESSAGING
+	// API FOR MESSAGING
 
 	// Start the server on port 8080
 	r.Run(":8080")
