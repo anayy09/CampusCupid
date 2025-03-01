@@ -20,7 +20,11 @@ import {
   FormControl,
   FormLabel,
   styled,
-  Grid
+  Grid,
+  Dialog,
+  DialogContent,
+  Zoom,
+  IconButton
 } from '@mui/material';
 
 const theme = createTheme({
@@ -113,20 +117,26 @@ function SignUpPage() {
   const [formData, setFormData] = useState({
     firstName: '',
     email: '',
+    password: '',
+    confirmPassword: '',
     dateOfBirth: '',
     gender: '',
     interestedIn: '',
     lookingFor: '',
     interests: [],
+    bio: '',
     sexualOrientation: '',
     photos: [],
   });
   const [previewUrls, setPreviewUrls] = useState([]);
   const [errors, setErrors] = useState({
     dateOfBirth: '',
+    password: '',
+    confirmPassword: '',
   });
+  const [showCelebration, setShowCelebration] = useState(false);
 
-  const steps = ['Basic Info', 'Preferences', 'Photos'];
+  const steps = ['Basic Info', 'Preferences', 'Bio & Photos'];
 
   // Validate age (18+)
   const validateAge = (dateString) => {
@@ -140,19 +150,50 @@ function SignUpPage() {
     }
     
     if (age < 18) {
-      setErrors({...errors, dateOfBirth: 'You must be at least 18 years old to register'});
+      setErrors(prev => ({...prev, dateOfBirth: 'You must be at least 18 years old to register'}));
       return false;
     } else {
-      setErrors({...errors, dateOfBirth: ''});
+      setErrors(prev => ({...prev, dateOfBirth: ''}));
+      return true;
+    }
+  };
+
+  // Validate password
+  const validatePassword = () => {
+    if (formData.password.length < 8) {
+      setErrors(prev => ({...prev, password: 'Password must be at least 8 characters'}));
+      return false;
+    } else {
+      setErrors(prev => ({...prev, password: ''}));
+      return true;
+    }
+  };
+
+  // Validate confirm password
+  const validateConfirmPassword = () => {
+    if (formData.password !== formData.confirmPassword) {
+      setErrors(prev => ({...prev, confirmPassword: 'Passwords do not match'}));
+      return false;
+    } else {
+      setErrors(prev => ({...prev, confirmPassword: ''}));
       return true;
     }
   };
 
   const handleNext = () => {
     if (activeStep === 0) {
-      // Check if user is 18+ before proceeding
-      if (formData.dateOfBirth && validateAge(formData.dateOfBirth)) {
+      // Check if user is 18+ and passwords are valid before proceeding
+      const isAgeValid = formData.dateOfBirth && validateAge(formData.dateOfBirth);
+      const isPasswordValid = formData.password && validatePassword();
+      const isConfirmPasswordValid = formData.confirmPassword && validateConfirmPassword();
+      
+      if (isAgeValid && isPasswordValid && isConfirmPasswordValid) {
         setActiveStep((prevStep) => prevStep + 1);
+      } else {
+        // Trigger validations to show errors
+        if (formData.dateOfBirth) validateAge(formData.dateOfBirth);
+        if (formData.password) validatePassword();
+        if (formData.confirmPassword) validateConfirmPassword();
       }
     } else {
       setActiveStep((prevStep) => prevStep + 1);
@@ -177,6 +218,36 @@ function SignUpPage() {
       dateOfBirth: newDob,
     });
     validateAge(newDob);
+  };
+
+  const handlePasswordChange = (event) => {
+    const newPassword = event.target.value;
+    setFormData({
+      ...formData,
+      password: newPassword,
+    });
+    
+    // Only validate if there's content to avoid immediate errors when starting to type
+    if (newPassword) {
+      validatePassword();
+      // If confirm password has content, validate it again since password changed
+      if (formData.confirmPassword) {
+        validateConfirmPassword();
+      }
+    }
+  };
+
+  const handleConfirmPasswordChange = (event) => {
+    const newConfirmPassword = event.target.value;
+    setFormData({
+      ...formData,
+      confirmPassword: newConfirmPassword,
+    });
+    
+    // Only validate if there's content
+    if (newConfirmPassword && formData.password) {
+      validateConfirmPassword();
+    }
   };
 
   const handleInterestsChange = (event, newValue) => {
@@ -206,9 +277,50 @@ function SignUpPage() {
     setPreviewUrls(newPreviewUrls);
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     console.log('Form submitted:', formData);
-    navigate('/');
+    
+    // Show celebration dialog
+    setShowCelebration(true);
+    
+    // After 3 seconds, close the celebration and proceed
+    setTimeout(() => {
+      setShowCelebration(false);
+      // navigate('/'); // Uncomment this to navigate after celebration
+    }, 3000);
+
+    try {
+        const response = await fetch('https://c9a3-68-101-69-114.ngrok-free.app/register', {
+            mode: 'cors',
+            method: 'POST',
+            headers: {  // Headers must be inside an object
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                "ageRange": "string",
+                "bio": formData.bio,
+                "createdAt": "string",
+                "distance": 0,
+                "email": formData.email,
+                "genderPreference": formData.interestedIn,
+                "id": 0,
+                "interests": formData.interests.join(','),
+                "password": formData.password,
+                "profilePictureURL": "string",
+                "updatedAt": "string",
+                "username": formData.firstName
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error(`Error: ${response.status}`);
+        }
+
+        const result = await response.json();
+        console.log('Success:', result);
+    } catch (error) {
+        console.error('API Error:', error.message);
+    }
   };
 
   const renderStepContent = (step) => {
@@ -236,6 +348,32 @@ function SignUpPage() {
               margin="normal"
               InputProps={{
                 style: { color: '#757575' }, // Tinder's gray color
+              }}
+            />
+            <StyledTextField
+              fullWidth
+              label="Password"
+              type="password"
+              value={formData.password}
+              onChange={handlePasswordChange}
+              margin="normal"
+              error={!!errors.password}
+              helperText={errors.password || "Must be at least 8 characters"}
+              InputProps={{
+                style: { color: '#757575' },
+              }}
+            />
+            <StyledTextField
+              fullWidth
+              label="Confirm Password"
+              type="password"
+              value={formData.confirmPassword}
+              onChange={handleConfirmPasswordChange}
+              margin="normal"
+              error={!!errors.confirmPassword}
+              helperText={errors.confirmPassword}
+              InputProps={{
+                style: { color: '#757575' },
               }}
             />
             <StyledTextField
@@ -339,6 +477,31 @@ function SignUpPage() {
       case 2:
         return (
           <Box sx={{ mt: 2 }}>
+            {/* Bio section */}
+            <Box sx={{ mb: 4 }}>
+              <Typography variant="h6" sx={{ mb: 2 }}>
+                About You
+              </Typography>
+              <StyledTextField
+                fullWidth
+                label="Bio"
+                multiline
+                rows={4}
+                placeholder="Tell us about yourself..."
+                value={formData.bio}
+                onChange={handleInputChange('bio')}
+                margin="normal"
+                helperText="A good bio increases your chances of finding matches. Max 500 characters."
+                inputProps={{ maxLength: 500 }}
+                InputProps={{
+                  style: { color: '#757575' },
+                }}
+              />
+              <Typography variant="body2" sx={{ textAlign: 'right', color: 'text.secondary' }}>
+                {formData.bio.length}/500
+              </Typography>
+            </Box>
+            
             <Typography variant="h6" sx={{ mb: 2 }}>
               Add your photos (2-9)
             </Typography>
@@ -395,6 +558,68 @@ function SignUpPage() {
     }
   };
   
+  // Celebration Dialog
+  const CelebrationDialog = () => (
+    <Dialog 
+      open={showCelebration} 
+      maxWidth="sm" 
+      fullWidth
+      PaperProps={{
+        style: {
+          backgroundColor: 'transparent',
+          boxShadow: 'none',
+          overflow: 'hidden'
+        }
+      }}
+    >
+      <DialogContent sx={{ 
+        textAlign: 'center', 
+        backgroundColor: 'rgba(255, 255, 255, 0.9)',
+        borderRadius: '20px',
+        padding: 4
+      }}>
+        <Zoom in={showCelebration} timeout={500}>
+          <Box>
+            <Typography 
+              variant="h4" 
+              sx={{ 
+                mb: 2, 
+                fontWeight: 'bold',
+                background: '-webkit-linear-gradient(45deg, #FE3C72 30%, #FF6036 90%)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                animation: 'pulse 1.5s infinite'
+              }}
+            >
+              Welcome to Campus Cupid!
+            </Typography>
+            <Typography variant="h6" sx={{ mb: 3 }}>
+              Your account has been created successfully!
+            </Typography>
+            <Box sx={{ 
+              fontSize: '4rem', 
+              display: 'flex',
+              justifyContent: 'center',
+              animation: 'bounce 1s infinite alternate'
+            }}>
+              ❤️ 💕 ❤️
+            </Box>
+          </Box>
+        </Zoom>
+      </DialogContent>
+      <style jsx>{`
+        @keyframes pulse {
+          0% { transform: scale(1); }
+          50% { transform: scale(1.05); }
+          100% { transform: scale(1); }
+        }
+        @keyframes bounce {
+          from { transform: translateY(0px); }
+          to { transform: translateY(-15px); }
+        }
+      `}</style>
+    </Dialog>
+  );
 
   return (
     <ThemeProvider theme={theme}>
@@ -449,6 +674,7 @@ function SignUpPage() {
           </Paper>
         </Box>
       </Container>
+      <CelebrationDialog />
     </ThemeProvider>
   );
 }
