@@ -5,10 +5,13 @@ package main
 // go mod tidy
 
 import (
+	"log"
+	"time"
+
 	"datingapp/database"
 	"datingapp/handlers"
-	"log"
 
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 
@@ -41,6 +44,16 @@ func main() {
 
 	// Create a new Gin router instance
 	r := gin.Default()
+
+	// CORS middleware configuration
+	r.Use(cors.New(cors.Config{
+		AllowOrigins:     []string{"*"}, // Allow all origins, change this if needed
+		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
+		ExposeHeaders:    []string{"Content-Length"},
+		AllowCredentials: true,
+		MaxAge:           12 * time.Hour,
+	}))
 
 	// Swagger documentation route
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
