@@ -67,9 +67,9 @@ func main() {
 	// get profile info
 	r.GET("/profile/:user_id", handlers.GetUserProfile)
 	// update profile info
-	r.POST("/profile/:user_id", handlers.UpdateUserProfile)
+	r.PUT("/profile/:user_id", handlers.UpdateUserProfile)
 	// update user preferences
-	r.POST("/preferences/:user_id", handlers.UpdateUserPreferences)
+	r.PUT("/preferences/:user_id", handlers.UpdateUserPreferences)
 
 	// APIS ON MATCHMAING PAGE
 

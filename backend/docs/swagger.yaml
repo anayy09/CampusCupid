@@ -1,78 +1,145 @@
 basePath: /
 definitions:
+  gorm.DeletedAt:
+    properties:
+      time:
+        type: string
+      valid:
+        description: Valid is true if Time is not NULL
+        type: boolean
+    type: object
   models.LoginRequest:
     properties:
+      email:
+        type: string
       password:
-        description: Password for login
         type: string
-      username:
-        description: Username for login
+    required:
+    - email
+    - password
+    type: object
+  models.RegistrationRequest:
+    properties:
+      dateOfBirth:
+        description: ConfirmPassword   string   `json:"confirmPassword" binding:"required"`
         type: string
+      email:
+        type: string
+      firstName:
+        type: string
+      gender:
+        type: string
+      interestedIn:
+        type: string
+      interests:
+        items:
+          type: string
+        type: array
+      lookingFor:
+        type: string
+      password:
+        minLength: 8
+        type: string
+      photos:
+        items:
+          type: string
+        type: array
+      sexualOrientation:
+        description: Bio               string   `json:"bio"`
+        type: string
+    required:
+    - dateOfBirth
+    - email
+    - firstName
+    - gender
+    - interestedIn
+    - interests
+    - lookingFor
+    - password
+    - photos
     type: object
   models.UpdatePreferencesRequest:
     properties:
-      age_range:
-        description: Age range preference
+      ageRange:
         type: string
       distance:
-        description: Distance preference
         type: integer
-      gender_preference:
-        description: Gender preference for matches
+      genderPreference:
         type: string
     type: object
   models.UpdateProfileRequest:
     properties:
-      age_range:
+      ageRange:
         type: string
-      bio:
+      dateOfBirth:
         type: string
       distance:
         type: integer
-      gender_preference:
+      firstName:
+        type: string
+      gender:
+        type: string
+      genderPreference:
+        type: string
+      interestedIn:
         type: string
       interests:
+        description: Bio               string   `json:"bio"`
+        items:
+          type: string
+        type: array
+      lookingFor:
         type: string
-      profile_picture:
+      photos:
+        items:
+          type: string
+        type: array
+      profilePictureURL:
+        type: string
+      sexualOrientation:
         type: string
     type: object
   models.User:
     properties:
       ageRange:
-        description: Age range of the user (string of max length 50)
         type: string
       bio:
-        description: Bio can be any length (stored as text)
         type: string
       createdAt:
-        description: Automatically set when a record is created
         type: string
+      dateOfBirth:
+        type: string
+      deletedAt:
+        $ref: '#/definitions/gorm.DeletedAt'
       distance:
-        description: Distance preference (in integer)
         type: integer
       email:
-        description: Unique and non-nullable email
+        type: string
+      firstName:
+        type: string
+      gender:
         type: string
       genderPreference:
-        description: Gender preference for potential matches
         type: string
       id:
-        description: Explicitly define ID field and set it as the primary key
         type: integer
+      interestedIn:
+        type: string
       interests:
-        description: Interests can be a large text field
+        items:
+          type: string
+        type: array
+      lookingFor:
         type: string
-      password:
-        description: Non-nullable password field
-        type: string
+      photos:
+        items:
+          type: string
+        type: array
       profilePictureURL:
-        description: URL of the profile picture (stored as text)
+        type: string
+      sexualOrientation:
         type: string
       updatedAt:
-        description: Automatically update when a record is modified
-        type: string
-      username:
-        description: Unique and non-nullable username
         type: string
     type: object
 host: localhost:8080
@@ -213,22 +280,9 @@ paths:
     put:
       consumes:
       - application/json
-      - application/json
-      description: |-
-        Update the profile details of a user using the user_id
-        Update profile details such as bio, interests, and preferences (excluding ID, Username, Email, Password)
+      description: Update profile details such as bio, interests, and preferences
+        (excluding ID, Username, Email, Password)
       parameters:
-      - description: User ID
-        in: path
-        name: user_id
-        required: true
-        type: integer
-      - description: Updated user details
-        in: body
-        name: user
-        required: true
-        schema:
-          $ref: '#/definitions/models.UpdateProfileRequest'
       - description: User ID
         in: path
         name: user_id
@@ -241,7 +295,6 @@ paths:
         schema:
           $ref: '#/definitions/models.UpdateProfileRequest'
       produces:
-      - application/json
       - application/json
       responses:
         "200":
@@ -271,19 +324,18 @@ paths:
       summary: Update user profile by user_id
       tags:
       - users
-      - users
   /register:
     post:
       consumes:
       - application/json
       description: Create a new user account
       parameters:
-      - description: User details
+      - description: User registration details
         in: body
         name: user
         required: true
         schema:
-          $ref: '#/definitions/models.User'
+          $ref: '#/definitions/models.RegistrationRequest'
       produces:
       - application/json
       responses:
