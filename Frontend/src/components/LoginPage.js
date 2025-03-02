@@ -40,10 +40,9 @@ const StyledTextField = styled(TextField)({
     },
   },
   '& .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-input': {
-    color: '#FE3C72',
+    color: '#333',
   },
   '& .MuiInputBase-input': {
-    color: '#333',
     '&::placeholder': {
       color: '#999',
       opacity: 1,
