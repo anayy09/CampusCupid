@@ -3,6 +3,7 @@ package main
 // go run main.go
 // swag init
 // go mod tidy
+//swag init --parseDependency --parseInternal
 
 import (
 	"log"
