@@ -1,8 +1,4 @@
 import React, { useState } from 'react';
-
-// change url find a way to untie the api  
-
-
 import {
   Container,
   TextField,
@@ -13,11 +9,6 @@ import {
   Link,
   ThemeProvider,
   createTheme,
-
-  styled
-} from '@mui/material';
-import { useNavigate } from 'react-router-dom';
-
   styled,
   CircularProgress,
   Snackbar,
@@ -29,7 +20,6 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { Visibility, VisibilityOff } from '@mui/icons-material';
 
-
 // Custom styled TextField
 const StyledTextField = styled(TextField)({
   '& label.Mui-focused': {
@@ -40,11 +30,7 @@ const StyledTextField = styled(TextField)({
   },
   '& .MuiOutlinedInput-root': {
     '& fieldset': {
-
-      borderColor: '#rgba(0, 0, 0, 0.23)',
-
       borderColor: 'rgba(0, 0, 0, 0.23)',
-
     },
     '&:hover fieldset': {
       borderColor: '#FF6036',
@@ -54,19 +40,12 @@ const StyledTextField = styled(TextField)({
     },
   },
   '& .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-input': {
-
     color: '#FE3C72',
   },
   '& .MuiInputBase-input': {
-    '&::placeholder': {
-      color: '#FF6036',
-
     color: '#333',
-  },
-  '& .MuiInputBase-input': {
     '&::placeholder': {
       color: '#999',
-
       opacity: 1,
     },
   },
@@ -95,22 +74,13 @@ const theme = createTheme({
   },
 });
 
-
-
 // Backend API base URL - use environment variable
 const API_URL = process.env.REACT_APP_API_URL || 'https://ddce-68-101-69-114.ngrok-free.app';
-
 
 function LoginPage() {
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-
-
-  const handleLogin = () => {
-    console.log('Logging in with', email, password);
-    navigate('/');
-
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -181,7 +151,6 @@ function LoginPage() {
 
   const handleCloseSnackbar = () => {
     setOpenSnackbar(false);
-
   };
 
   return (
@@ -193,11 +162,7 @@ function LoginPage() {
             display: 'flex',
             flexDirection: 'column',
             justifyContent: 'center',
-
-            py: 8,
-
             py: 4,
-
           }}
         >
           <Paper
@@ -207,20 +172,14 @@ function LoginPage() {
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
-
               borderRadius: '16px',
-
             }}
           >
             <Typography
               component="h1"
               variant="h4"
               sx={{
-
-                mb: 4,
-
                 mb: 3,
-
                 fontWeight: 'bold',
                 background: '-webkit-linear-gradient(45deg, #FE3C72 30%, #FF6036 90%)',
                 WebkitBackgroundClip: 'text',
@@ -229,17 +188,12 @@ function LoginPage() {
             >
               Campus Cupid
             </Typography>
-
-
-            <Box component="form" sx={{ width: '100%' }}>
-
             
             <Typography variant="subtitle1" sx={{ mb: 3, textAlign: 'center', color: '#666' }}>
               Welcome back! Please sign in to continue
             </Typography>
 
             <Box component="form" onSubmit={handleLogin} sx={{ width: '100%' }}>
-
               <StyledTextField
                 margin="normal"
                 required
@@ -252,10 +206,8 @@ function LoginPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 sx={{ mb: 2 }}
-
                 error={!!error && error.includes('email')}
                 helperText={error && error.includes('email') ? error : ''}
-
               />
               <StyledTextField
                 margin="normal"
@@ -263,24 +215,12 @@ function LoginPage() {
                 fullWidth
                 name="password"
                 label="Password"
-
-                type="password"
-
                 type={showPassword ? 'text' : 'password'}
-
                 id="password"
                 autoComplete="current-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 sx={{ mb: 3 }}
-
-              />
-              <Button
-                fullWidth
-                variant="contained"
-                size="large"
-                onClick={handleLogin}
-
                 error={!!error && error.includes('password')}
                 helperText={error && error.includes('password') ? error : ''}
                 InputProps={{
@@ -303,29 +243,12 @@ function LoginPage() {
                 variant="contained"
                 size="large"
                 disabled={loading}
-
                 sx={{
                   height: 56,
                   background: 'linear-gradient(45deg, #FE3C72 30%, #FF6036 90%)',
                   '&:hover': {
                     background: 'linear-gradient(45deg, #E31C5F 30%, #E31C5F 90%)',
                   },
-
-                }}
-              >
-                Sign In
-              </Button>
-
-              <Box sx={{ mt: 3, textAlign: 'center' }}>
-                <Link href="#" variant="body2" sx={{ color: 'primary.main' }}>
-                  Forgot password?
-                </Link>
-                <Box sx={{ mt: 2 }}>
-                  <Typography variant="body2" display="inline" sx={{ mr: 1 }}>
-                    Don't have an account?
-                  </Typography>
-                  <Link href="/signup" variant="body2" sx={{ color: 'primary.main' }}>
-
                   textTransform: 'none',
                   fontSize: '1rem',
                   fontWeight: 'bold',
@@ -344,7 +267,6 @@ function LoginPage() {
                     Don't have an account?
                   </Typography>
                   <Link href="/signup" variant="body2" sx={{ color: 'primary.main', fontWeight: 'bold', textDecoration: 'none' }}>
-
                     Sign Up
                   </Link>
                 </Box>
@@ -352,8 +274,6 @@ function LoginPage() {
             </Box>
           </Paper>
         </Box>
-
-
         
         {/* Error Notification */}
         <Snackbar 
@@ -370,7 +290,6 @@ function LoginPage() {
             {error}
           </Alert>
         </Snackbar>
-
       </Container>
     </ThemeProvider>
   );

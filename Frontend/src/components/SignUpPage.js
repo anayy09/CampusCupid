@@ -21,15 +21,11 @@ import {
   FormLabel,
   styled,
   Grid,
-
   Dialog,
   DialogContent,
   Zoom,
-  IconButton
-
   Snackbar,
   Alert
-
 } from '@mui/material';
 
 const theme = createTheme({
@@ -116,11 +112,8 @@ const suggestedInterests = [
   'Gardening'
 ];
 
-
-
 // Updated API URL - replace with your backend URL
 const API_URL = 'https://ddce-68-101-69-114.ngrok-free.app';
-
 
 function SignUpPage() {
   const navigate = useNavigate();
@@ -135,31 +128,21 @@ function SignUpPage() {
     interestedIn: '',
     lookingFor: '',
     interests: [],
-
     bio: '',
-    sexualOrientation: '',
-
     sexualOrientation: 'Straight', // Default value
-
     photos: [],
   });
   const [previewUrls, setPreviewUrls] = useState([]);
   const [errors, setErrors] = useState({
     dateOfBirth: '',
     password: '',
-
     confirmPassword: '',
   });
   const [showCelebration, setShowCelebration] = useState(false);
-
-  const steps = ['Basic Info', 'Preferences', 'Bio & Photos'];
-
-  });
   const [submitError, setSubmitError] = useState('');
   const [openSnackbar, setOpenSnackbar] = useState(false);
 
   const steps = ['Basic Info', 'Preferences', 'Photos'];
-
 
   // Validate age (18+)
   const validateAge = (dateString) => {
@@ -173,21 +156,13 @@ function SignUpPage() {
     }
     
     if (age < 18) {
-
       setErrors(prev => ({...prev, dateOfBirth: 'You must be at least 18 years old to register'}));
       return false;
     } else {
       setErrors(prev => ({...prev, dateOfBirth: ''}));
-
-      setErrors({...errors, dateOfBirth: 'You must be at least 18 years old to register'});
-      return false;
-    } else {
-      setErrors({...errors, dateOfBirth: ''});
-
       return true;
     }
   };
-
 
   // Validate password
   const validatePassword = () => {
@@ -207,22 +182,12 @@ function SignUpPage() {
       return false;
     } else {
       setErrors(prev => ({...prev, confirmPassword: ''}));
-
-  // Validate password match
-  const validatePassword = () => {
-    if (formData.password !== formData.confirmPassword) {
-      setErrors({...errors, password: 'Passwords do not match'});
-      return false;
-    } else {
-      setErrors({...errors, password: ''});
-
       return true;
     }
   };
 
   const handleNext = () => {
     if (activeStep === 0) {
-
       // Check if user is 18+ and passwords are valid before proceeding
       const isAgeValid = formData.dateOfBirth && validateAge(formData.dateOfBirth);
       const isPasswordValid = formData.password && validatePassword();
@@ -235,11 +200,6 @@ function SignUpPage() {
         if (formData.dateOfBirth) validateAge(formData.dateOfBirth);
         if (formData.password) validatePassword();
         if (formData.confirmPassword) validateConfirmPassword();
-
-      // Check if user is 18+ and passwords match before proceeding
-      if (formData.dateOfBirth && validateAge(formData.dateOfBirth) && validatePassword()) {
-        setActiveStep((prevStep) => prevStep + 1);
-
       }
     } else {
       setActiveStep((prevStep) => prevStep + 1);
@@ -265,7 +225,6 @@ function SignUpPage() {
     });
     validateAge(newDob);
   };
-
 
   const handlePasswordChange = (event) => {
     const newPassword = event.target.value;
@@ -297,8 +256,6 @@ function SignUpPage() {
     }
   };
 
-
-
   const handleInterestsChange = (event, newValue) => {
     setFormData({
       ...formData,
@@ -325,54 +282,6 @@ function SignUpPage() {
     });
     setPreviewUrls(newPreviewUrls);
   };
-
-
-  const handleSubmit = async () => {
-    console.log('Form submitted:', formData);
-    
-    // Show celebration dialog
-    setShowCelebration(true);
-    
-    // After 3 seconds, close the celebration and proceed
-    setTimeout(() => {
-      setShowCelebration(false);
-      // navigate('/'); // Uncomment this to navigate after celebration
-    }, 3000);
-
-    try {
-        const response = await fetch('https://c9a3-68-101-69-114.ngrok-free.app/register', {
-            mode: 'cors',
-            method: 'POST',
-            headers: {  // Headers must be inside an object
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                "ageRange": "string",
-                "bio": formData.bio,
-                "createdAt": "string",
-                "distance": 0,
-                "email": formData.email,
-                "genderPreference": formData.interestedIn,
-                "id": 0,
-                "interests": formData.interests.join(','),
-                "password": formData.password,
-                "profilePictureURL": "string",
-                "updatedAt": "string",
-                "username": formData.firstName
-            })
-        });
-
-        if (!response.ok) {
-            throw new Error(`Error: ${response.status}`);
-        }
-
-        const result = await response.json();
-        console.log('Success:', result);
-    } catch (error) {
-        console.error('API Error:', error.message);
-    }
-  };
-
 
   // Convert form data to match backend API expectations
   const prepareFormDataForSubmission = () => {
@@ -445,8 +354,14 @@ function SignUpPage() {
         throw new Error(errorData.error || 'Registration failed');
       }
 
-      // If successful, navigate to login page
-      navigate('/login');
+      // Show celebration dialog
+      setShowCelebration(true);
+      
+      // After 3 seconds, close the celebration and proceed
+      setTimeout(() => {
+        setShowCelebration(false);
+        navigate('/login'); // Navigate to login page after celebration
+      }, 3000);
     } catch (error) {
       console.error('Error during registration:', error);
       setSubmitError(error.message);
@@ -458,7 +373,6 @@ function SignUpPage() {
     setOpenSnackbar(false);
   };
 
-
   const renderStepContent = (step) => {
     switch (step) {
       case 0:
@@ -466,45 +380,31 @@ function SignUpPage() {
           <Box sx={{ mt: 2 }}>
             <StyledTextField
               fullWidth
-
-
               required
-
               color="primary"
               label="First Name"
               value={formData.firstName}
               onChange={handleInputChange('firstName')}
               margin="normal"
               InputProps={{
-
-                style: { color: '#757575' }, // Tinder's gray color
-
                 style: { color: '#757575' },
-
               }}
             />
             <StyledTextField
               fullWidth
-
-
               required
-
               label="Email"
               type="email"
               value={formData.email}
               onChange={handleInputChange('email')}
               margin="normal"
               InputProps={{
-
-                style: { color: '#757575' }, // Tinder's gray color
-
                 style: { color: '#757575' },
-
               }}
             />
             <StyledTextField
               fullWidth
-
+              required
               label="Password"
               type="password"
               value={formData.password}
@@ -512,21 +412,13 @@ function SignUpPage() {
               margin="normal"
               error={!!errors.password}
               helperText={errors.password || "Must be at least 8 characters"}
-
-              required
-              label="Password"
-              type="password"
-              value={formData.password}
-              onChange={handleInputChange('password')}
-              margin="normal"
-
               InputProps={{
                 style: { color: '#757575' },
               }}
             />
             <StyledTextField
               fullWidth
-
+              required
               label="Confirm Password"
               type="password"
               value={formData.confirmPassword}
@@ -534,26 +426,13 @@ function SignUpPage() {
               margin="normal"
               error={!!errors.confirmPassword}
               helperText={errors.confirmPassword}
-
-              required
-              label="Confirm Password"
-              type="password"
-              value={formData.confirmPassword}
-              onChange={handleInputChange('confirmPassword')}
-              margin="normal"
-              error={!!errors.password}
-              helperText={errors.password}
-
               InputProps={{
                 style: { color: '#757575' },
               }}
             />
             <StyledTextField
               fullWidth
-
-
               required
-
               label="Date of Birth"
               type="date"
               value={formData.dateOfBirth}
@@ -565,11 +444,7 @@ function SignUpPage() {
                 shrink: true,
               }}
               InputProps={{
-
-                style: { color: '#757575' }, // Tinder's gray color
-
                 style: { color: '#757575' },
-
               }}
             />
           </Box>
@@ -578,11 +453,7 @@ function SignUpPage() {
       case 1:
         return (
           <Box sx={{ mt: 2 }}>
-
-            <FormControl component="fieldset" sx={{ mb: 3, width: '100%' }}>
-
             <FormControl component="fieldset" sx={{ mb: 3, width: '100%' }} required>
-
               <FormLabel component="legend">I am a</FormLabel>
               <RadioGroup
                 value={formData.gender}
@@ -594,11 +465,7 @@ function SignUpPage() {
               </RadioGroup>
             </FormControl>
 
-
-            <FormControl component="fieldset" sx={{ mb: 3, width: '100%' }}>
-
             <FormControl component="fieldset" sx={{ mb: 3, width: '100%' }} required>
-
               <FormLabel component="legend">Interested in</FormLabel>
               <RadioGroup
                 value={formData.interestedIn}
@@ -610,11 +477,7 @@ function SignUpPage() {
               </RadioGroup>
             </FormControl>
 
-
-            <FormControl component="fieldset" sx={{ mb: 3, width: '100%' }}>
-
             <FormControl component="fieldset" sx={{ mb: 3, width: '100%' }} required>
-
               <FormLabel component="legend">Looking for</FormLabel>
               <RadioGroup
                 value={formData.lookingFor}
@@ -626,9 +489,6 @@ function SignUpPage() {
                 <FormControlLabel value="friendship" control={<Radio />} label="Friendship" />
               </RadioGroup>
             </FormControl>
-
-
-            {/* New Interests field with scrollable dropdown */}
 
             <FormControl component="fieldset" sx={{ mb: 3, width: '100%' }} required>
               <FormLabel component="legend">Sexual Orientation</FormLabel>
@@ -643,7 +503,6 @@ function SignUpPage() {
                 <FormControlLabel value="Other" control={<Radio />} label="Other" />
               </RadioGroup>
             </FormControl>
-
 
             <Box sx={{ mb: 3, width: '100%' }}>
               <FormLabel component="legend" sx={{ mb: 1 }}>Your Interests</FormLabel>
@@ -686,7 +545,6 @@ function SignUpPage() {
       case 2:
         return (
           <Box sx={{ mt: 2 }}>
-
             {/* Bio section */}
             <Box sx={{ mb: 4 }}>
               <Typography variant="h6" sx={{ mb: 2 }}>
@@ -712,8 +570,6 @@ function SignUpPage() {
               </Typography>
             </Box>
             
-
-
             <Typography variant="h6" sx={{ mb: 2 }}>
               Add your photos (2-9)
             </Typography>
@@ -769,8 +625,6 @@ function SignUpPage() {
         return null;
     }
   };
-  
-
   // Celebration Dialog
   const CelebrationDialog = () => (
     <Dialog 
