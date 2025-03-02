@@ -1,12 +1,8 @@
 package main
 
-// go run main.go
-// swag init
-// go mod tidy
-//swag init --parseDependency --parseInternal
-
 import (
 	"log"
+	"os"
 	"time"
 
 	"datingapp/database"
@@ -14,7 +10,6 @@ import (
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
-	"github.com/joho/godotenv"
 
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
@@ -22,12 +17,7 @@ import (
 	_ "datingapp/docs"
 )
 
-func init() {
-	// Load environment variables from .env file
-	if err := godotenv.Load(); err != nil {
-		log.Fatal("Error loading .env file")
-	}
-}
+// host for deployment campuscupid-backend.onrender.com
 
 // @title CampusCupid API
 // @version 1.0
@@ -76,6 +66,13 @@ func main() {
 
 	// API FOR MESSAGING
 
-	// Start the server on port 8080
-	r.Run(":8080")
+	// Get the port from the environment variable (default to 8080)
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
+
+	// Start the server
+	log.Printf("Server is running on port %s", port)
+	r.Run(":" + port)
 }
