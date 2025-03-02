@@ -22,7 +22,7 @@ dist/
 go.work
 
 # Environment files
-.env
+# .env
 .env.local
 .env.development
 .env.production
