@@ -17,6 +17,7 @@ import (
 	_ "datingapp/docs"
 )
 
+// host for deployment campuscupid-backend.onrender.com
 // @title CampusCupid API
 // @version 1.0
 // @description This is the backend API for the CampusCupid dating app.
@@ -25,7 +26,7 @@ import (
 // @contact.email support@campuscupid.com
 // @license.name MIT
 // @license.url https://opensource.org/licenses/MIT
-// @host campuscupid-backend.onrender.com
+// @host localhost:8080
 // @BasePath /
 func main() {
 	// Initialize database connection
