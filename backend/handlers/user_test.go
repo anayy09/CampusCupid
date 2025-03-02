@@ -38,6 +38,7 @@ func setupRouter(db *gorm.DB) *gin.Engine {
 	return r
 }
 
+// TestResult defines the structure of the test result
 type TestResult struct {
 	TestName string `json:"test_name"`
 	API      string `json:"api"`
@@ -144,6 +145,7 @@ func TestRegister(t *testing.T) {
 			// Write the test result to a file
 			result := TestResult{
 				TestName: tt.name,
+				API:      "/register",
 				Status:   http.StatusText(w.Code),
 				Response: w.Body.String(),
 			}
@@ -230,6 +232,7 @@ func TestLogin(t *testing.T) {
 			// Write the test result to a file
 			result := TestResult{
 				TestName: tt.name,
+				API:      "/login",
 				Status:   http.StatusText(w.Code),
 				Response: w.Body.String(),
 			}
@@ -294,6 +297,7 @@ func TestGetUserProfile(t *testing.T) {
 			// Write the test result to a file
 			result := TestResult{
 				TestName: tt.name,
+				API:      "/profile/" + tt.userID,
 				Status:   http.StatusText(w.Code),
 				Response: w.Body.String(),
 			}
@@ -370,6 +374,7 @@ func TestUpdateUserProfile(t *testing.T) {
 			// Write the test result to a file
 			result := TestResult{
 				TestName: tt.name,
+				API:      "/profile/" + tt.userID,
 				Status:   http.StatusText(w.Code),
 				Response: w.Body.String(),
 			}
@@ -446,6 +451,7 @@ func TestUpdateUserPreferences(t *testing.T) {
 			// Write the test result to a file
 			result := TestResult{
 				TestName: tt.name,
+				API:      "/preferences/" + tt.userID,
 				Status:   http.StatusText(w.Code),
 				Response: w.Body.String(),
 			}
