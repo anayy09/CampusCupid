@@ -41,37 +41,80 @@ func setupRouter(db *gorm.DB) *gin.Engine {
 // TestResult defines the structure of the test result
 type TestResult struct {
 	TestName string `json:"test_name"`
-	API      string `json:"api"`
 	Status   string `json:"status"`
 	Response string `json:"response"`
 }
 
-// writeTestResult writes the test result to a file in JSON format
-func writeTestResult(filename string, result TestResult) error {
-	file, err := os.OpenFile(filename, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
-
-	resultJSON, err := json.Marshal(result)
-	if err != nil {
-		return err
-	}
-
-	_, err = file.WriteString(string(resultJSON) + "\n")
-	return err
+// TestResultsGroup defines the structure for grouped test results by API route
+type TestResultsGroup struct {
+	Route   string       `json:"route"`
+	Results []TestResult `json:"results"`
 }
 
-// Setup test results directory
+var testResultsFile *os.File
+var testResultsGroups map[string]*TestResultsGroup
+
+// Setup test results directory and file
 func setupTestResultsDir() {
 	os.RemoveAll("test-results") // Clean up previous results
 	os.Mkdir("test-results", 0755)
+
+	// Open the test results file in write mode
+	var err error
+	testResultsFile, err = os.OpenFile("test-results/test_results.json", os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
+	if err != nil {
+		panic("failed to create test results file")
+	}
+
+	// Initialize the test results groups
+	testResultsGroups = make(map[string]*TestResultsGroup)
+}
+
+// Close the test results file and write the grouped results
+func closeTestResultsFile() {
+	// Convert the map of groups to a slice
+	groups := make([]TestResultsGroup, 0, len(testResultsGroups))
+	for _, group := range testResultsGroups {
+		groups = append(groups, *group)
+	}
+
+	// Marshal the grouped results to JSON
+	resultsJSON, err := json.MarshalIndent(groups, "", "  ")
+	if err != nil {
+		panic("failed to marshal test results")
+	}
+
+	// Write the JSON to the file
+	_, err = testResultsFile.Write(resultsJSON)
+	if err != nil {
+		panic("failed to write to test results file")
+	}
+
+	// Close the file
+	err = testResultsFile.Close()
+	if err != nil {
+		panic("failed to close test results file")
+	}
+}
+
+// writeTestResult adds a test result to the corresponding group
+func writeTestResult(route string, result TestResult) {
+	// Check if the group for this route already exists
+	if _, exists := testResultsGroups[route]; !exists {
+		testResultsGroups[route] = &TestResultsGroup{
+			Route:   route,
+			Results: []TestResult{},
+		}
+	}
+
+	// Append the result to the group
+	testResultsGroups[route].Results = append(testResultsGroups[route].Results, result)
 }
 
 func TestMain(m *testing.M) {
-	setupTestResultsDir() // Create the test-results directory
-	code := m.Run()       // Run all tests
+	setupTestResultsDir()  // Create the test-results directory and file
+	code := m.Run()        // Run all tests
+	closeTestResultsFile() // Close the test results file
 	os.Exit(code)
 }
 
@@ -142,17 +185,13 @@ func TestRegister(t *testing.T) {
 			assert.Equal(t, tt.expectedCode, w.Code)
 			assert.Contains(t, w.Body.String(), tt.expectedBody)
 
-			// Write the test result to a file
+			// Write the test result to the corresponding group
 			result := TestResult{
 				TestName: tt.name,
-				API:      "/register",
 				Status:   http.StatusText(w.Code),
 				Response: w.Body.String(),
 			}
-			err := writeTestResult("test-results/test_results.json", result)
-			if err != nil {
-				t.Errorf("Failed to write test result: %v", err)
-			}
+			writeTestResult("/register", result)
 		})
 	}
 }
@@ -229,17 +268,13 @@ func TestLogin(t *testing.T) {
 				assert.Equal(t, tt.expectedBody, w.Body.String())
 			}
 
-			// Write the test result to a file
+			// Write the test result to the corresponding group
 			result := TestResult{
 				TestName: tt.name,
-				API:      "/login",
 				Status:   http.StatusText(w.Code),
 				Response: w.Body.String(),
 			}
-			err := writeTestResult("test-results/test_results.json", result)
-			if err != nil {
-				t.Errorf("Failed to write test result: %v", err)
-			}
+			writeTestResult("/login", result)
 		})
 	}
 }
@@ -294,17 +329,13 @@ func TestGetUserProfile(t *testing.T) {
 			assert.Equal(t, tt.expectedCode, w.Code)
 			assert.Contains(t, w.Body.String(), tt.expectedBody)
 
-			// Write the test result to a file
+			// Write the test result to the corresponding group
 			result := TestResult{
 				TestName: tt.name,
-				API:      "/profile/" + tt.userID,
 				Status:   http.StatusText(w.Code),
 				Response: w.Body.String(),
 			}
-			err := writeTestResult("test-results/test_results.json", result)
-			if err != nil {
-				t.Errorf("Failed to write test result: %v", err)
-			}
+			writeTestResult("/profile/:user_id", result)
 		})
 	}
 }
@@ -371,17 +402,13 @@ func TestUpdateUserProfile(t *testing.T) {
 			assert.Equal(t, tt.expectedCode, w.Code)
 			assert.Contains(t, w.Body.String(), tt.expectedBody)
 
-			// Write the test result to a file
+			// Write the test result to the corresponding group
 			result := TestResult{
 				TestName: tt.name,
-				API:      "/profile/" + tt.userID,
 				Status:   http.StatusText(w.Code),
 				Response: w.Body.String(),
 			}
-			err := writeTestResult("test-results/test_results.json", result)
-			if err != nil {
-				t.Errorf("Failed to write test result: %v", err)
-			}
+			writeTestResult("/profile/:user_id", result)
 		})
 	}
 }
@@ -448,17 +475,13 @@ func TestUpdateUserPreferences(t *testing.T) {
 			assert.Equal(t, tt.expectedCode, w.Code)
 			assert.Contains(t, w.Body.String(), tt.expectedBody)
 
-			// Write the test result to a file
+			// Write the test result to the corresponding group
 			result := TestResult{
 				TestName: tt.name,
-				API:      "/preferences/" + tt.userID,
 				Status:   http.StatusText(w.Code),
 				Response: w.Body.String(),
 			}
-			err := writeTestResult("test-results/test_results.json", result)
-			if err != nil {
-				t.Errorf("Failed to write test result: %v", err)
-			}
+			writeTestResult("/preferences/:user_id", result)
 		})
 	}
 }
