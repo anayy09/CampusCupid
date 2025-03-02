@@ -5,10 +5,13 @@ package main
 // go mod tidy
 
 import (
+	"log"
+	"time"
+
 	"datingapp/database"
 	"datingapp/handlers"
-	"log"
 
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 
@@ -42,6 +45,16 @@ func main() {
 	// Create a new Gin router instance
 	r := gin.Default()
 
+	// CORS middleware configuration
+	r.Use(cors.New(cors.Config{
+		AllowOrigins:     []string{"*"}, // Allow all origins, change this if needed
+		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
+		ExposeHeaders:    []string{"Content-Length"},
+		AllowCredentials: true,
+		MaxAge:           12 * time.Hour,
+	}))
+
 	// Swagger documentation route
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
@@ -54,9 +67,9 @@ func main() {
 	// get profile info
 	r.GET("/profile/:user_id", handlers.GetUserProfile)
 	// update profile info
-	r.POST("/profile/:user_id", handlers.UpdateUserProfile)
+	r.PUT("/profile/:user_id", handlers.UpdateUserProfile)
 	// update user preferences
-	r.POST("/preferences/:user_id", handlers.UpdateUserPreferences)
+	r.PUT("/preferences/:user_id", handlers.UpdateUserPreferences)
 
 	// APIS ON MATCHMAING PAGE
 
