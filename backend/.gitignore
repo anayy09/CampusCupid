@@ -14,9 +14,9 @@ dist/
 *.out
 
 # Dependency directories
-vendor/
-go.mod
-go.sum
+# vendor/
+# go.mod
+# go.sum
 
 # Go workspace file
 go.work
