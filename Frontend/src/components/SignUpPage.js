@@ -110,7 +110,7 @@ const suggestedInterests = [
 ];
 
 // Updated API URL - replace with your backend URL
-const API_URL = 'https://ddce-68-101-69-114.ngrok-free.app';
+const API_URL = 'https://campuscupid-backend.onrender.com';
 
 function SignUpPage() {
   const navigate = useNavigate();
