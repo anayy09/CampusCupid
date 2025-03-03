@@ -24,3 +24,6 @@ yarn-error.log*
 
 # testing folder
 /backend/handlers/test-results
+
+# Swagger docs
+backend/docs/swagger.yaml
