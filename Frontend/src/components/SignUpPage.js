@@ -22,7 +22,10 @@ import {
   styled,
   Grid,
   Snackbar,
-  Alert
+  Alert,
+  Dialog,
+  DialogContent,
+  Zoom
 } from '@mui/material';
 
 const theme = createTheme({
@@ -126,17 +129,20 @@ function SignUpPage() {
     lookingFor: '',
     interests: [],
     sexualOrientation: 'Straight', // Default value
+    bio: '', // Added bio field
     photos: [],
   });
   const [previewUrls, setPreviewUrls] = useState([]);
   const [errors, setErrors] = useState({
     dateOfBirth: '',
     password: '',
+    bio: '',
   });
   const [submitError, setSubmitError] = useState('');
   const [openSnackbar, setOpenSnackbar] = useState(false);
+  const [showCelebration, setShowCelebration] = useState(false);
 
-  const steps = ['Basic Info', 'Preferences', 'Photos'];
+  const steps = ['Basic Info', 'About You', 'Photos'];
 
   // Validate age (18+)
   const validateAge = (dateString) => {
@@ -169,10 +175,26 @@ function SignUpPage() {
     }
   };
 
+  // Validate bio length
+  const validateBio = (bioText) => {
+    if (bioText.length > 500) {
+      setErrors({...errors, bio: 'Bio must be 500 characters or less'});
+      return false;
+    } else {
+      setErrors({...errors, bio: ''});
+      return true;
+    }
+  };
+
   const handleNext = () => {
     if (activeStep === 0) {
       // Check if user is 18+ and passwords match before proceeding
       if (formData.dateOfBirth && validateAge(formData.dateOfBirth) && validatePassword()) {
+        setActiveStep((prevStep) => prevStep + 1);
+      }
+    } else if (activeStep === 1) {
+      // Validate bio before proceeding
+      if (validateBio(formData.bio)) {
         setActiveStep((prevStep) => prevStep + 1);
       }
     } else {
@@ -189,6 +211,11 @@ function SignUpPage() {
       ...formData,
       [field]: event.target.value,
     });
+
+    // Validate bio as user types
+    if (field === 'bio') {
+      validateBio(event.target.value);
+    }
   };
 
   const handleDateOfBirthChange = (event) => {
@@ -226,6 +253,69 @@ function SignUpPage() {
     });
     setPreviewUrls(newPreviewUrls);
   };
+
+  // Celebration Dialog
+  const CelebrationDialog = () => (
+    <Dialog 
+      open={showCelebration} 
+      maxWidth="sm" 
+      fullWidth
+      PaperProps={{
+        style: {
+          backgroundColor: 'transparent',
+          boxShadow: 'none',
+          overflow: 'hidden'
+        }
+      }}
+    >
+      <DialogContent sx={{ 
+        textAlign: 'center', 
+        backgroundColor: 'rgba(255, 255, 255, 0.9)',
+        borderRadius: '20px',
+        padding: 4
+      }}>
+        <Zoom in={showCelebration} timeout={500}>
+          <Box>
+            <Typography 
+              variant="h4" 
+              sx={{ 
+                mb: 2, 
+                fontWeight: 'bold',
+                background: '-webkit-linear-gradient(45deg, #FE3C72 30%, #FF6036 90%)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                animation: 'pulse 1.5s infinite'
+              }}
+            >
+              Welcome to Campus Cupid!
+            </Typography>
+            <Typography variant="h6" sx={{ mb: 3 }}>
+              Your account has been created successfully!
+            </Typography>
+            <Box sx={{ 
+              fontSize: '4rem', 
+              display: 'flex',
+              justifyContent: 'center',
+              animation: 'bounce 1s infinite alternate'
+            }}>
+              ❤️ 💕 ❤️
+            </Box>
+          </Box>
+        </Zoom>
+      </DialogContent>
+      <style jsx>{`
+        @keyframes pulse {
+          0% { transform: scale(1); }
+          50% { transform: scale(1.05); }
+          100% { transform: scale(1); }
+        }
+        @keyframes bounce {
+          from { transform: translateY(0px); }
+          to { transform: translateY(-15px); }
+        }
+      `}</style>
+    </Dialog>
+  );
 
   // Convert form data to match backend API expectations
   const prepareFormDataForSubmission = () => {
@@ -267,6 +357,7 @@ function SignUpPage() {
       lookingFor: lookingForMap[formData.lookingFor] || formData.lookingFor,
       interests: formData.interests,
       sexualOrientation: formData.sexualOrientation,
+      bio: formData.bio, // Added bio to API submission
       photos: photoUrls
     };
   };
@@ -298,8 +389,14 @@ function SignUpPage() {
         throw new Error(errorData.error || 'Registration failed');
       }
 
-      // If successful, navigate to login page
-      navigate('/login');
+      // Show celebration dialog on successful registration
+      setShowCelebration(true);
+      
+      // Redirect to login page after a delay
+      setTimeout(() => {
+        navigate('/login');
+      }, 3000);
+      
     } catch (error) {
       console.error('Error during registration:', error);
       setSubmitError(error.message);
@@ -475,6 +572,26 @@ function SignUpPage() {
                 sx={{ mt: 1 }}
               />
             </Box>
+
+            {/* Added Bio TextField */}
+            <Box sx={{ mb: 3, width: '100%' }}>
+              <FormLabel component="legend" sx={{ mb: 1 }}>About You</FormLabel>
+              <StyledTextField
+                fullWidth
+                multiline
+                rows={4}
+                label="Your Bio"
+                placeholder="Tell others about yourself..."
+                value={formData.bio}
+                onChange={handleInputChange('bio')}
+                margin="normal"
+                error={!!errors.bio}
+                helperText={errors.bio || `${formData.bio.length}/500 characters`}
+                InputProps={{
+                  style: { color: '#757575' },
+                }}
+              />
+            </Box>
           </Box>
         );
 
@@ -536,7 +653,6 @@ function SignUpPage() {
         return null;
     }
   };
-  
 
   return (
     <ThemeProvider theme={theme}>
@@ -597,6 +713,9 @@ function SignUpPage() {
           {submitError}
         </Alert>
       </Snackbar>
+
+      {/* Celebration Dialog */}
+      <CelebrationDialog />
     </ThemeProvider>
   );
 }
