@@ -372,9 +372,12 @@ function SignUpPage() {
       }
 
       // Prepare data for API
+      
+      // add something here  ///////////////----------------------------------------------
       const apiData = prepareFormDataForSubmission();
       console.log('Submitting data to API:', apiData);
 
+      // ------------------------------------------------------------------------ something to entertain user 
       // Make API call to register endpoint
       const response = await fetch(`${API_URL}/register`, {
         method: 'POST',
@@ -395,7 +398,7 @@ function SignUpPage() {
       // Redirect to login page after a delay
       setTimeout(() => {
         navigate('/login');
-      }, 3000);
+      }, 2000);
       
     } catch (error) {
       console.error('Error during registration:', error);
