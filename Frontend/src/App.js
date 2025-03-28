@@ -4,6 +4,7 @@ import LandingPage from "./components/LandingPage";
 import LoginPage from "./components/LoginPage";
 import SignUpPage from './components/SignUpPage';
 import MatcherPage from "./components/matcher";
+import { Dashboard } from "@mui/icons-material";
 
 function App() {
   return (
@@ -15,7 +16,9 @@ function App() {
         <Route path="/login" element={<LoginPage />} />
          {/* Route for Signup Page */}
         <Route path="/signup" element={<SignUpPage />} />
-         {/* Route for Matchmaking Page */}
+         {/* Route for Dashboard Page */}
+         <Route path="/dashboard" element={<Dashboard />} />
+
         <Route path="/matcher" element={<MatcherPage />} />
       </Routes>
     </Router>
