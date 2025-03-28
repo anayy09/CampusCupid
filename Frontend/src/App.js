@@ -9,9 +9,13 @@ function App() {
   return (
     <Router>
       <Routes>
+         {/* Route for Home Page */}
         <Route path="/" element={<LandingPage />} />
+         {/* Route for Login Page */}
         <Route path="/login" element={<LoginPage />} />
+         {/* Route for Signup Page */}
         <Route path="/signup" element={<SignUpPage />} />
+         {/* Route for Matchmaking Page */}
         <Route path="/matcher" element={<MatcherPage />} />
       </Routes>
     </Router>
