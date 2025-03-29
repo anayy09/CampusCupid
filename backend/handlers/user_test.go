@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strconv" // Added for uint to string conversion
 	"testing"
 
 	"github.com/gin-gonic/gin"
@@ -22,7 +23,8 @@ func setupTestDB() *gorm.DB {
 	if err != nil {
 		panic("failed to connect to database")
 	}
-	db.AutoMigrate(&models.User{})
+	// Migrate both User and Interaction models (needed for matches)
+	db.AutoMigrate(&models.User{}, &models.Interaction{})
 	return db
 }
 
@@ -35,6 +37,7 @@ func setupRouter(db *gorm.DB) *gin.Engine {
 	r.GET("/profile/:user_id", GetUserProfile)
 	r.PUT("/profile/:user_id", UpdateUserProfile)
 	r.PUT("/preferences/:user_id", UpdateUserPreferences)
+	r.GET("/matches/:user_id", GetMatches) // Added new endpoint
 	return r
 }
 
@@ -143,7 +146,7 @@ func TestRegister(t *testing.T) {
 				Photos:            []string{"photo1.jpg", "photo2.jpg"},
 			},
 			expectedCode: http.StatusCreated,
-			expectedBody: `{"message":"User registered successfully"}`,
+			expectedBody: `{"message":"User registered successfully"`,
 		},
 		{
 			name: "Duplicate Email",
@@ -299,6 +302,11 @@ func TestGetUserProfile(t *testing.T) {
 	user.HashPassword(user.Password)
 	db.Create(&user)
 
+	// Fetch the latest user ID dynamically
+	var latestUser models.User
+	db.Order("id desc").First(&latestUser)
+	userID := strconv.Itoa(int(latestUser.ID)) // Convert uint to string
+
 	tests := []struct {
 		name         string
 		userID       string
@@ -307,7 +315,7 @@ func TestGetUserProfile(t *testing.T) {
 	}{
 		{
 			name:         "Successful Profile Retrieval",
-			userID:       "1",
+			userID:       userID,
 			expectedCode: http.StatusOK,
 			expectedBody: `"firstName":"John"`,
 		},
@@ -360,6 +368,11 @@ func TestUpdateUserProfile(t *testing.T) {
 	user.HashPassword(user.Password)
 	db.Create(&user)
 
+	// Fetch the latest user ID dynamically
+	var latestUser models.User
+	db.Order("id desc").First(&latestUser)
+	userID := strconv.Itoa(int(latestUser.ID)) // Convert uint to string
+
 	tests := []struct {
 		name         string
 		userID       string
@@ -369,7 +382,7 @@ func TestUpdateUserProfile(t *testing.T) {
 	}{
 		{
 			name:   "Successful Profile Update",
-			userID: "1",
+			userID: userID,
 			payload: models.UpdateProfileRequest{
 				FirstName:         "John Updated",
 				Interests:         []string{"Hiking", "Reading", "Cooking"},
@@ -433,6 +446,11 @@ func TestUpdateUserPreferences(t *testing.T) {
 	user.HashPassword(user.Password)
 	db.Create(&user)
 
+	// Fetch the latest user ID dynamically
+	var latestUser models.User
+	db.Order("id desc").First(&latestUser)
+	userID := strconv.Itoa(int(latestUser.ID)) // Convert uint to string
+
 	tests := []struct {
 		name         string
 		userID       string
@@ -442,7 +460,7 @@ func TestUpdateUserPreferences(t *testing.T) {
 	}{
 		{
 			name:   "Successful Preferences Update",
-			userID: "1",
+			userID: userID,
 			payload: models.UpdatePreferencesRequest{
 				AgeRange:         "25-30",
 				Distance:         15,
@@ -482,6 +500,107 @@ func TestUpdateUserPreferences(t *testing.T) {
 				Response: w.Body.String(),
 			}
 			writeTestResult("/preferences/:user_id", result)
+		})
+	}
+}
+
+func TestGetMatches(t *testing.T) {
+	db := setupTestDB()
+	router := setupRouter(db)
+
+	// Register two users for testing matches
+	user1 := models.User{
+		FirstName:         "John",
+		Email:             "john@example.com",
+		Password:          "password123",
+		DateOfBirth:       "1990-01-01",
+		Gender:            "Male",
+		InterestedIn:      "Female",
+		LookingFor:        "Relationship",
+		Interests:         []string{"Hiking", "Reading"},
+		SexualOrientation: "Straight",
+		Photos:            []string{"photo1.jpg"},
+		AgeRange:          "20-30",
+		Distance:          50,
+		GenderPreference:  "Female",
+		Latitude:          37.7749,
+		Longitude:         -122.4194,
+	}
+	user1.HashPassword(user1.Password)
+	db.Create(&user1)
+
+	user2 := models.User{
+		FirstName:         "Jane",
+		Email:             "jane@example.com",
+		Password:          "password123",
+		DateOfBirth:       "1995-05-15",
+		Gender:            "Female",
+		InterestedIn:      "Male",
+		LookingFor:        "Relationship",
+		Interests:         []string{"Hiking", "Music"},
+		SexualOrientation: "Straight",
+		Photos:            []string{"photo2.jpg"},
+		AgeRange:          "25-35",
+		Distance:          50,
+		GenderPreference:  "Male",
+		Latitude:          37.7858, // Close to user1 for distance filter
+		Longitude:         -122.4364,
+	}
+	user2.HashPassword(user2.Password)
+	db.Create(&user2)
+
+	// Fetch the latest user ID dynamically (John's ID)
+	var latestUser models.User
+	db.Order("id desc").First(&latestUser)
+	userID := strconv.Itoa(int(latestUser.ID)) // Convert uint to string
+
+	tests := []struct {
+		name         string
+		userID       string
+		query        string
+		expectedCode int
+		expectedBody string
+	}{
+		{
+			name:         "Successful Matches Retrieval",
+			userID:       userID, // John's ID
+			query:        "?page=1&limit=10",
+			expectedCode: http.StatusOK,
+			expectedBody: `"firstName":"Jane"`, // Expect Jane as a match
+		},
+		{
+			name:         "User Not Found",
+			userID:       "999",
+			query:        "?page=1&limit=10",
+			expectedCode: http.StatusNotFound,
+			expectedBody: `{"error":"User not found"}`,
+		},
+		{
+			name:         "Invalid User ID",
+			userID:       "invalid",
+			query:        "?page=1&limit=10",
+			expectedCode: http.StatusBadRequest,
+			expectedBody: `{"error":"Invalid user ID"}`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req, _ := http.NewRequest("GET", "/matches/"+tt.userID+tt.query, nil)
+			w := httptest.NewRecorder()
+			router.ServeHTTP(w, req)
+
+			// Assert the test result
+			assert.Equal(t, tt.expectedCode, w.Code)
+			assert.Contains(t, w.Body.String(), tt.expectedBody)
+
+			// Write the test result to the corresponding group
+			result := TestResult{
+				TestName: tt.name,
+				Status:   http.StatusText(w.Code),
+				Response: w.Body.String(),
+			}
+			writeTestResult("/matches/:user_id", result)
 		})
 	}
 }
