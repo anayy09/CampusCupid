@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -119,14 +120,37 @@ func Login(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param user_id path uint true "User ID"
+// @Security ApiKeyAuth
 // @Success 200 {object} models.User
 // @Failure 400 {object} map[string]string
+// @Failure 401 {object} map[string]string
+// @Failure 403 {object} map[string]string
 // @Failure 404 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Router /profile/{user_id} [get]
 func GetUserProfile(c *gin.Context) {
 	// Extract user_id from URL
 	userID := c.Param("user_id")
+
+	// Get the authenticated user's ID from the context
+	authenticatedUserID, exists := c.Get("userID")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Authentication required"})
+		return
+	}
+
+	// Convert the parameter to uint for comparison
+	paramUserID, err := strconv.ParseUint(userID, 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
+		return
+	}
+
+	// Check if the authenticated user is accessing their own profile
+	if uint(paramUserID) != authenticatedUserID.(uint) {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Access denied: You can only view your own profile"})
+		return
+	}
 
 	// Retrieve the user info from the database
 	var user models.User
@@ -162,14 +186,37 @@ func GetUserProfile(c *gin.Context) {
 // @Produce json
 // @Param user_id path uint true "User ID"
 // @Param profile body models.UpdateProfileRequest true "Updated profile details"
+// @Security ApiKeyAuth
 // @Success 200 {object} map[string]string
 // @Failure 400 {object} map[string]string
+// @Failure 401 {object} map[string]string
+// @Failure 403 {object} map[string]string
 // @Failure 404 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Router /profile/{user_id} [put]
 func UpdateUserProfile(c *gin.Context) {
 	// Extract user_id from URL
 	userID := c.Param("user_id")
+
+	// Get the authenticated user's ID from the context
+	authenticatedUserID, exists := c.Get("userID")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Authentication required"})
+		return
+	}
+
+	// Convert the parameter to uint for comparison
+	paramUserID, err := strconv.ParseUint(userID, 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
+		return
+	}
+
+	// Check if the authenticated user is updating their own profile
+	if uint(paramUserID) != authenticatedUserID.(uint) {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Access denied: You can only update your own profile"})
+		return
+	}
 
 	// Retrieve user from database
 	var user models.User
@@ -218,14 +265,37 @@ func UpdateUserProfile(c *gin.Context) {
 // @Produce json
 // @Param user_id path uint true "User ID"
 // @Param preferences body models.UpdatePreferencesRequest true "User Preferences"
+// @Security ApiKeyAuth
 // @Success 200 {object} map[string]string
 // @Failure 400 {object} map[string]string
+// @Failure 401 {object} map[string]string
+// @Failure 403 {object} map[string]string
 // @Failure 404 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Router /preferences/{user_id} [put]
 func UpdateUserPreferences(c *gin.Context) {
 	// Extract user_id from URL
 	userID := c.Param("user_id")
+
+	// Get the authenticated user's ID from the context
+	authenticatedUserID, exists := c.Get("userID")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Authentication required"})
+		return
+	}
+
+	// Convert the parameter to uint for comparison
+	paramUserID, err := strconv.ParseUint(userID, 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
+		return
+	}
+
+	// Check if the authenticated user is updating their own preferences
+	if uint(paramUserID) != authenticatedUserID.(uint) {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Access denied: You can only update your own preferences"})
+		return
+	}
 
 	// Bind JSON to UpdatePreferencesRequest struct
 	var preference models.UpdatePreferencesRequest

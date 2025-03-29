@@ -7,6 +7,7 @@ import (
 
 	"datingapp/database"
 	"datingapp/handlers"
+	"datingapp/middleware"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -54,13 +55,13 @@ func main() {
 	r.POST("/register", handlers.Register)
 	r.POST("/login", handlers.Login)
 
-	// USER PROFILE APIS
+	// USER PROFILE APIS - Protected with authentication middleware
 	// get profile info
-	r.GET("/profile/:user_id", handlers.GetUserProfile)
+	r.GET("/profile/:user_id", middleware.AuthMiddleware(), handlers.GetUserProfile)
 	// update profile info
-	r.PUT("/profile/:user_id", handlers.UpdateUserProfile)
+	r.PUT("/profile/:user_id", middleware.AuthMiddleware(), handlers.UpdateUserProfile)
 	// update user preferences
-	r.PUT("/preferences/:user_id", handlers.UpdateUserPreferences)
+	r.PUT("/preferences/:user_id", middleware.AuthMiddleware(), handlers.UpdateUserPreferences)
 
 	// APIS ON MATCHMAING PAGE
 
