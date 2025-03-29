@@ -17,7 +17,7 @@ import (
 	_ "datingapp/docs"
 )
 
-// host for deployment campuscupid-backend.onrender.com
+//:Matchmaking API,Like/Dislike User,Messaging API
 
 // @title CampusCupid API
 // @version 1.0
