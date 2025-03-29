@@ -175,6 +175,7 @@ func GetUserProfile(c *gin.Context) {
 		"ageRange":          user.AgeRange,
 		"distance":          user.Distance,
 		"genderPreference":  user.GenderPreference,
+		"profilePictureURL": user.ProfilePictureURL,
 	})
 }
 
@@ -232,20 +233,78 @@ func UpdateUserProfile(c *gin.Context) {
 		return
 	}
 
+	// Input validation
+	validationErrors := make(map[string]string)
+
+	// Validate firstName if provided
+	if updateData.FirstName != "" && len(updateData.FirstName) < 2 {
+		validationErrors["firstName"] = "First name must be at least 2 characters"
+	}
+
+	// Validate dateOfBirth if provided
+	if updateData.DateOfBirth != "" {
+		_, err := time.Parse("2006-01-02", updateData.DateOfBirth)
+		if err != nil {
+			validationErrors["dateOfBirth"] = "Date of birth must be in format YYYY-MM-DD"
+		}
+	}
+
+	// Validate interests if provided
+	if updateData.Interests != nil && len(updateData.Interests) == 0 {
+		validationErrors["interests"] = "Interests cannot be empty if provided"
+	}
+
+	// Validate Photos if provided
+	if updateData.Photos != nil && len(updateData.Photos) == 0 {
+		validationErrors["photos"] = "Photos cannot be empty if provided"
+	}
+
+	// Return validation errors if any
+	if len(validationErrors) > 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"errors": validationErrors})
+		return
+	}
+
 	// Update allowed fields
 	// user.Bio = updateData.Bio
-	user.Interests = updateData.Interests
-	user.ProfilePictureURL = updateData.ProfilePictureURL
-	user.FirstName = updateData.FirstName
-	user.DateOfBirth = updateData.DateOfBirth
-	user.Gender = updateData.Gender
-	user.InterestedIn = updateData.InterestedIn
-	user.LookingFor = updateData.LookingFor
-	user.SexualOrientation = updateData.SexualOrientation
-	user.Photos = updateData.Photos
-	user.AgeRange = updateData.AgeRange
-	user.Distance = updateData.Distance
-	user.GenderPreference = updateData.GenderPreference
+
+	// Only update fields that are provided (not empty)
+	if updateData.Interests != nil {
+		user.Interests = updateData.Interests
+	}
+	if updateData.ProfilePictureURL != "" {
+		user.ProfilePictureURL = updateData.ProfilePictureURL
+	}
+	if updateData.FirstName != "" {
+		user.FirstName = updateData.FirstName
+	}
+	if updateData.DateOfBirth != "" {
+		user.DateOfBirth = updateData.DateOfBirth
+	}
+	if updateData.Gender != "" {
+		user.Gender = updateData.Gender
+	}
+	if updateData.InterestedIn != "" {
+		user.InterestedIn = updateData.InterestedIn
+	}
+	if updateData.LookingFor != "" {
+		user.LookingFor = updateData.LookingFor
+	}
+	if updateData.SexualOrientation != "" {
+		user.SexualOrientation = updateData.SexualOrientation
+	}
+	if updateData.Photos != nil {
+		user.Photos = updateData.Photos
+	}
+	if updateData.AgeRange != "" {
+		user.AgeRange = updateData.AgeRange
+	}
+	if updateData.Distance != 0 {
+		user.Distance = updateData.Distance
+	}
+	if updateData.GenderPreference != "" {
+		user.GenderPreference = updateData.GenderPreference
+	}
 
 	// Save changes to database
 	if err := database.DB.Save(&user).Error; err != nil {
@@ -301,6 +360,59 @@ func UpdateUserPreferences(c *gin.Context) {
 	var preference models.UpdatePreferencesRequest
 	if err := c.ShouldBindJSON(&preference); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Input validation
+	validationErrors := make(map[string]string)
+
+	// Validate age range format (e.g., "18-30")
+	if preference.AgeRange != "" {
+		ageRangeParts := strings.Split(preference.AgeRange, "-")
+		if len(ageRangeParts) != 2 {
+			validationErrors["ageRange"] = "Age range must be in format 'min-max' (e.g., '18-30')"
+		} else {
+			minAge, minErr := strconv.Atoi(ageRangeParts[0])
+			maxAge, maxErr := strconv.Atoi(ageRangeParts[1])
+
+			if minErr != nil || maxErr != nil {
+				validationErrors["ageRange"] = "Age range must contain valid numbers"
+			} else if minAge < 18 {
+				validationErrors["ageRange"] = "Minimum age must be at least 18"
+			} else if maxAge > 100 {
+				validationErrors["ageRange"] = "Maximum age cannot exceed 100"
+			} else if minAge >= maxAge {
+				validationErrors["ageRange"] = "Minimum age must be less than maximum age"
+			}
+		}
+	}
+
+	// Validate distance
+	if preference.Distance < 0 {
+		validationErrors["distance"] = "Distance cannot be negative"
+	} else if preference.Distance > 100 {
+		validationErrors["distance"] = "Distance cannot exceed 100 miles"
+	}
+
+	// Validate gender preference
+	validGenders := []string{"Male", "Female", "Non-binary", "All"}
+	if preference.GenderPreference != "" {
+		isValidGender := false
+		for _, gender := range validGenders {
+			if preference.GenderPreference == gender {
+				isValidGender = true
+				break
+			}
+		}
+
+		if !isValidGender {
+			validationErrors["genderPreference"] = "Gender preference must be one of: Male, Female, Non-binary, All"
+		}
+	}
+
+	// Return validation errors if any
+	if len(validationErrors) > 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"errors": validationErrors})
 		return
 	}
 

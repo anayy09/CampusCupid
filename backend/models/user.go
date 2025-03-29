@@ -1,6 +1,8 @@
 package models
 
 import (
+	"time"
+
 	"github.com/gin-gonic/gin/binding"
 	"github.com/go-playground/validator/v10"
 	"golang.org/x/crypto/bcrypt"
@@ -8,22 +10,26 @@ import (
 )
 
 type User struct {
-	gorm.Model
-	FirstName         string   `gorm:"not null" json:"firstName"`
-	Email             string   `gorm:"unique;not null" json:"email"`
-	Password          string   `gorm:"not null" json:"-"`
-	DateOfBirth       string   `gorm:"not null" json:"dateOfBirth"`
-	Gender            string   `gorm:"not null" json:"gender"`
-	InterestedIn      string   `gorm:"not null" json:"interestedIn"`
-	LookingFor        string   `gorm:"not null" json:"lookingFor"`
-	Interests         []string `gorm:"type:json;serializer:json" json:"interests"`
-	Bio               string   `gorm:"type:text" json:"bio"`
-	SexualOrientation string   `json:"sexualOrientation"`
-	Photos            []string `gorm:"type:json;serializer:json" json:"photos"`
-	AgeRange          string   `gorm:"type:varchar(50)" json:"ageRange"`
-	Distance          int      `gorm:"type:int" json:"distance"`
-	GenderPreference  string   `gorm:"type:varchar(50)" json:"genderPreference"`
-	ProfilePictureURL string   `gorm:"type:text" json:"profilePictureURL"`
+	// gorm.Model
+	ID                uint           `gorm:"primaryKey" json:"id"`
+	CreatedAt         time.Time      `json:"createdAt"`
+	UpdatedAt         time.Time      `json:"updatedAt"`
+	DeletedAt         gorm.DeletedAt `gorm:"index" json:"-"`
+	FirstName         string         `gorm:"not null" json:"firstName"`
+	Email             string         `gorm:"unique;not null" json:"email"`
+	Password          string         `gorm:"not null" json:"-"`
+	DateOfBirth       string         `gorm:"not null" json:"dateOfBirth"`
+	Gender            string         `gorm:"not null" json:"gender"`
+	InterestedIn      string         `gorm:"not null" json:"interestedIn"`
+	LookingFor        string         `gorm:"not null" json:"lookingFor"`
+	Interests         []string       `gorm:"type:json;serializer:json" json:"interests"`
+	Bio               string         `gorm:"type:text" json:"bio"`
+	SexualOrientation string         `json:"sexualOrientation"`
+	Photos            []string       `gorm:"type:json;serializer:json" json:"photos"`
+	AgeRange          string         `gorm:"type:varchar(50)" json:"ageRange"`
+	Distance          int            `gorm:"type:int" json:"distance"`
+	GenderPreference  string         `gorm:"type:varchar(50)" json:"genderPreference"`
+	ProfilePictureURL string         `gorm:"type:text" json:"profilePictureURL"`
 }
 
 // Custom validation function
