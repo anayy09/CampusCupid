@@ -1,71 +1,103 @@
 basePath: /
 definitions:
-  models.User:
+  models.LoginRequest:
+    properties:
+      email:
+        type: string
+      password:
+        type: string
+    required:
+    - email
+    - password
+    type: object
+  models.UpdatePreferencesRequest:
     properties:
       ageRange:
-        description: Preferred age range (e.g., "18-25")
-        type: string
-      bio:
-        description: Optional user bio
-        type: string
-      created_at:
-        description: Timestamp of creation
-        type: string
-      dateOfBirth:
-        description: Date of birth in YYYY-MM-DD format, required
-        type: string
-      deleted_at:
-        description: Soft delete timestamp (nullable, pointer for nil value)
         type: string
       distance:
-        description: Preferred match distance in kilometers
         type: integer
-      email:
-        description: Unique email, required
+      genderPreference:
         type: string
+    type: object
+  models.UpdateProfileRequest:
+    properties:
+      ageRange:
+        type: string
+      dateOfBirth:
+        type: string
+      distance:
+        type: integer
       firstName:
-        description: User's first name, required
         type: string
       gender:
-        description: User's gender, required
         type: string
       genderPreference:
-        description: Preferred gender for matches
         type: string
-      id:
-        description: Primary key for the user
-        type: integer
       interestedIn:
-        description: What the user is interested in (e.g., "dating", "friendship"),
-          required
         type: string
       interests:
-        description: List of user interests, stored as JSON
         items:
           type: string
         type: array
       latitude:
-        description: User's latitude for geolocation
         type: number
       longitude:
-        description: User's longitude for geolocation
         type: number
       lookingFor:
-        description: What the user is looking for (e.g., "relationship"), required
         type: string
       photos:
-        description: List of photo URLs, stored as JSON
         items:
           type: string
         type: array
       profilePictureURL:
-        description: URL of the user's profile picture
         type: string
       sexualOrientation:
-        description: Optional sexual orientation
         type: string
-      updated_at:
-        description: Timestamp of last update
+    type: object
+  models.User:
+    properties:
+      ageRange:
+        type: string
+      bio:
+        type: string
+      createdAt:
+        type: string
+      dateOfBirth:
+        type: string
+      distance:
+        type: integer
+      email:
+        type: string
+      firstName:
+        type: string
+      gender:
+        type: string
+      genderPreference:
+        type: string
+      id:
+        description: gorm.Model
+        type: integer
+      interestedIn:
+        type: string
+      interests:
+        items:
+          type: string
+        type: array
+      latitude:
+        type: number
+      longitude:
+        type: number
+      lookingFor:
+        type: string
+      photos:
+        items:
+          type: string
+        type: array
+      profilePictureURL:
+        type: string
+      sexualOrientation:
+        type: string
+      updatedAt:
         type: string
     type: object
 host: campuscupid-backend.onrender.com
@@ -81,6 +113,48 @@ info:
   title: CampusCupid API
   version: "1.0"
 paths:
+  /login:
+    post:
+      consumes:
+      - application/json
+      description: Authenticate a user and return a JWT token
+      parameters:
+      - description: User login credentials
+        in: body
+        name: credentials
+        required: true
+        schema:
+          $ref: '#/definitions/models.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Login a user
+      tags:
+      - users
   /matches/{user_id}:
     get:
       consumes:
@@ -132,4 +206,179 @@ paths:
       summary: Get potential matches
       tags:
       - matchmaking
+  /preferences/{user_id}:
+    put:
+      consumes:
+      - application/json
+      description: Update the user's age range, distance, and gender preference
+      parameters:
+      - description: User ID
+        in: path
+        name: user_id
+        required: true
+        type: integer
+      - description: User Preferences
+        in: body
+        name: preferences
+        required: true
+        schema:
+          $ref: '#/definitions/models.UpdatePreferencesRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Update user preferences
+      tags:
+      - users
+  /profile/{user_id}:
+    get:
+      consumes:
+      - application/json
+      description: Get the profile details of a user using the user_id
+      parameters:
+      - description: User ID
+        in: path
+        name: user_id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.User'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Get user profile by user_id
+      tags:
+      - users
+    put:
+      consumes:
+      - application/json
+      description: Update profile details such as bio, interests, and preferences
+        (excluding ID, Username, Email, Password)
+      parameters:
+      - description: User ID
+        in: path
+        name: user_id
+        required: true
+        type: integer
+      - description: Updated profile details
+        in: body
+        name: profile
+        required: true
+        schema:
+          $ref: '#/definitions/models.UpdateProfileRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Update user profile by user_id
+      tags:
+      - users
 swagger: "2.0"
