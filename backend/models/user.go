@@ -31,6 +31,8 @@ type User struct {
 	Distance          int            `gorm:"type:int" json:"distance"`
 	GenderPreference  string         `gorm:"type:varchar(50)" json:"genderPreference"`
 	ProfilePictureURL string         `gorm:"type:text" json:"profilePictureURL"`
+	Latitude          float64        `gorm:"type:float" json:"latitude"`
+	Longitude         float64        `gorm:"type:float" json:"longitude"`
 }
 
 // Interaction tracks user interactions (likes, dislikes, matches)
