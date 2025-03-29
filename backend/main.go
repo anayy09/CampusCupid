@@ -1,23 +1,19 @@
 package main
 
 import (
+	"datingapp/database"
+	"datingapp/handlers"
 	"log"
 	"os"
 	"time"
 
-	"datingapp/database"
-	"datingapp/handlers"
+	_ "datingapp/docs" // Import Swagger docs
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
-
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
-
-	_ "datingapp/docs"
 )
-
-//:Matchmaking API,Like/Dislike User,Messaging API
 
 // @title CampusCupid API
 // @version 1.0
@@ -33,40 +29,31 @@ func main() {
 	// Initialize database connection
 	database.Connect()
 
-	// Create a new Gin router instance
+	// Create a new Gin router with default middleware (logging, recovery)
 	r := gin.Default()
 
-	// CORS middleware configuration
+	// Configure CORS middleware
 	r.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{"*"}, // Allow all origins, change this if needed
+		AllowOrigins:     []string{"*"}, // Allow all origins (tighten in production)
 		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
 		ExposeHeaders:    []string{"Content-Length"},
 		AllowCredentials: true,
-		MaxAge:           12 * time.Hour,
+		MaxAge:           12 * time.Hour, // Cache preflight requests for 12 hours
 	}))
 
-	// Swagger documentation route
+	// Serve Swagger documentation
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
-	// LOGIN APIS
-	// Public authentication routes
-	r.POST("/register", handlers.Register)
-	r.POST("/login", handlers.Login)
+	// Public routes (no authentication required)
+	r.POST("/register", handlers.Register)                         // User registration endpoint
+	r.POST("/login", handlers.Login)                               // User login endpoint
+	r.GET("/matches/:user_id", handlers.GetMatches)                // Get potential matches
+	r.GET("/profile/:user_id", handlers.GetUserProfile)            // Get user profile
+	r.PUT("/profile/:user_id", handlers.UpdateUserProfile)         // Update user profile
+	r.PUT("/preferences/:user_id", handlers.UpdateUserPreferences) // Update preferences
 
-	// USER PROFILE APIS
-	// get profile info
-	r.GET("/profile/:user_id", handlers.GetUserProfile)
-	// update profile info
-	r.PUT("/profile/:user_id", handlers.UpdateUserProfile)
-	// update user preferences
-	r.PUT("/preferences/:user_id", handlers.UpdateUserPreferences)
-
-	// APIS ON MATCHMAING PAGE
-
-	// API FOR MESSAGING
-
-	// Get the port from the environment variable (default to 8080)
+	// Determine the port to run on (default to 8080 if not set)
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
@@ -74,5 +61,5 @@ func main() {
 
 	// Start the server
 	log.Printf("Server is running on port %s", port)
-	r.Run(":" + port)
+	r.Run(":" + port) // Listen on 0.0.0.0:port
 }
