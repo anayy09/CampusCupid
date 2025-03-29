@@ -1,148 +1,74 @@
 basePath: /
 definitions:
-  gorm.DeletedAt:
-    properties:
-      time:
-        type: string
-      valid:
-        description: Valid is true if Time is not NULL
-        type: boolean
-    type: object
-  models.LoginRequest:
-    properties:
-      email:
-        type: string
-      password:
-        type: string
-    required:
-    - email
-    - password
-    type: object
-  models.RegistrationRequest:
-    properties:
-      dateOfBirth:
-        description: ConfirmPassword   string   `json:"confirmPassword" binding:"required"`
-        type: string
-      email:
-        type: string
-      firstName:
-        type: string
-      gender:
-        type: string
-      interestedIn:
-        type: string
-      interests:
-        items:
-          type: string
-        type: array
-      lookingFor:
-        type: string
-      password:
-        minLength: 8
-        type: string
-      photos:
-        items:
-          type: string
-        type: array
-      sexualOrientation:
-        description: Bio               string   `json:"bio"`
-        type: string
-    required:
-    - dateOfBirth
-    - email
-    - firstName
-    - gender
-    - interestedIn
-    - interests
-    - lookingFor
-    - password
-    - photos
-    type: object
-  models.UpdatePreferencesRequest:
-    properties:
-      ageRange:
-        type: string
-      distance:
-        type: integer
-      genderPreference:
-        type: string
-    type: object
-  models.UpdateProfileRequest:
-    properties:
-      ageRange:
-        type: string
-      dateOfBirth:
-        type: string
-      distance:
-        type: integer
-      firstName:
-        type: string
-      gender:
-        type: string
-      genderPreference:
-        type: string
-      interestedIn:
-        type: string
-      interests:
-        description: Bio               string   `json:"bio"`
-        items:
-          type: string
-        type: array
-      lookingFor:
-        type: string
-      photos:
-        items:
-          type: string
-        type: array
-      profilePictureURL:
-        type: string
-      sexualOrientation:
-        type: string
-    type: object
   models.User:
     properties:
       ageRange:
+        description: Preferred age range (e.g., "18-25")
         type: string
       bio:
+        description: Optional user bio
         type: string
-      createdAt:
+      created_at:
+        description: Timestamp of creation
         type: string
       dateOfBirth:
+        description: Date of birth in YYYY-MM-DD format, required
         type: string
-      deletedAt:
-        $ref: '#/definitions/gorm.DeletedAt'
+      deleted_at:
+        description: Soft delete timestamp (nullable, pointer for nil value)
+        type: string
       distance:
+        description: Preferred match distance in kilometers
         type: integer
       email:
+        description: Unique email, required
         type: string
       firstName:
+        description: User's first name, required
         type: string
       gender:
+        description: User's gender, required
         type: string
       genderPreference:
+        description: Preferred gender for matches
         type: string
       id:
+        description: Primary key for the user
         type: integer
       interestedIn:
+        description: What the user is interested in (e.g., "dating", "friendship"),
+          required
         type: string
       interests:
+        description: List of user interests, stored as JSON
         items:
           type: string
         type: array
+      latitude:
+        description: User's latitude for geolocation
+        type: number
+      longitude:
+        description: User's longitude for geolocation
+        type: number
       lookingFor:
+        description: What the user is looking for (e.g., "relationship"), required
         type: string
       photos:
+        description: List of photo URLs, stored as JSON
         items:
           type: string
         type: array
       profilePictureURL:
+        description: URL of the user's profile picture
         type: string
       sexualOrientation:
+        description: Optional sexual orientation
         type: string
-      updatedAt:
+      updated_at:
+        description: Timestamp of last update
         type: string
     type: object
-host: localhost:8080
+host: campuscupid-backend.onrender.com
 info:
   contact:
     email: support@campuscupid.com
@@ -155,99 +81,26 @@ info:
   title: CampusCupid API
   version: "1.0"
 paths:
-  /login:
-    post:
-      consumes:
-      - application/json
-      description: Authenticate a user and return a JWT token
-      parameters:
-      - description: User login credentials
-        in: body
-        name: credentials
-        required: true
-        schema:
-          $ref: '#/definitions/models.LoginRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "400":
-          description: Bad Request
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "401":
-          description: Unauthorized
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      summary: Login a user
-      tags:
-      - users
-  /preferences/{user_id}:
-    put:
-      consumes:
-      - application/json
-      description: Update the user's age range, distance, and gender preference
-      parameters:
-      - description: User ID
-        in: path
-        name: user_id
-        required: true
-        type: integer
-      - description: User Preferences
-        in: body
-        name: preferences
-        required: true
-        schema:
-          $ref: '#/definitions/models.UpdatePreferencesRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "400":
-          description: Bad Request
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "404":
-          description: Not Found
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "500":
-          description: Internal Server Error
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      summary: Update user preferences
-      tags:
-      - users
-  /profile/{user_id}:
+  /matches/{user_id}:
     get:
       consumes:
       - application/json
-      description: Get the profile details of a user using the user_id
+      description: Retrieve a list of potential matches based on user preferences
       parameters:
       - description: User ID
         in: path
         name: user_id
         required: true
+        type: integer
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 10
+        description: Items per page
+        in: query
+        name: limit
         type: integer
       produces:
       - application/json
@@ -255,7 +108,9 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/models.User'
+            items:
+              $ref: '#/definitions/models.User'
+            type: array
         "400":
           description: Bad Request
           schema:
@@ -274,90 +129,7 @@ paths:
             additionalProperties:
               type: string
             type: object
-      summary: Get user profile by user_id
+      summary: Get potential matches
       tags:
-      - users
-    put:
-      consumes:
-      - application/json
-      description: Update profile details such as bio, interests, and preferences
-        (excluding ID, Username, Email, Password)
-      parameters:
-      - description: User ID
-        in: path
-        name: user_id
-        required: true
-        type: integer
-      - description: Updated profile details
-        in: body
-        name: profile
-        required: true
-        schema:
-          $ref: '#/definitions/models.UpdateProfileRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "400":
-          description: Bad Request
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "404":
-          description: Not Found
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "500":
-          description: Internal Server Error
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      summary: Update user profile by user_id
-      tags:
-      - users
-  /register:
-    post:
-      consumes:
-      - application/json
-      description: Create a new user account
-      parameters:
-      - description: User registration details
-        in: body
-        name: user
-        required: true
-        schema:
-          $ref: '#/definitions/models.RegistrationRequest'
-      produces:
-      - application/json
-      responses:
-        "201":
-          description: Created
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "400":
-          description: Bad Request
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "500":
-          description: Internal Server Error
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      summary: Register a new user
-      tags:
-      - users
+      - matchmaking
 swagger: "2.0"
