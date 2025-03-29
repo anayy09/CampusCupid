@@ -27,7 +27,7 @@ import (
 // @contact.email support@campuscupid.com
 // @license.name MIT
 // @license.url https://opensource.org/licenses/MIT
-// @host localhost:8080
+// @host campuscupid-backend.onrender.com
 // @BasePath /
 func main() {
 	// Initialize database connection

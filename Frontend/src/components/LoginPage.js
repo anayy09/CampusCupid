@@ -74,7 +74,9 @@ const theme = createTheme({
 });
 
 // Backend API base URL - use environment variable
-const API_URL = process.env.REACT_APP_API_URL || 'https://ddce-68-101-69-114.ngrok-free.app';
+
+// change this an envieremtnal varible 
+const API_URL = process.env.REACT_APP_API_URL || 'https://campuscupid-backend.onrender.com';
 
 function LoginPage() {
   const navigate = useNavigate();
