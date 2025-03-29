@@ -1,36 +1,36 @@
 package models
 
 import (
-	"time" // For timestamp fields
+	"time"
 
 	"github.com/gin-gonic/gin/binding"
 	"github.com/go-playground/validator/v10"
 	"golang.org/x/crypto/bcrypt"
+	"gorm.io/gorm"
 )
 
 // User represents a user in the dating app
 type User struct {
-	ID                uint       `gorm:"primaryKey" json:"id"`                       // Primary key for the user
-	CreatedAt         time.Time  `json:"created_at"`                                 // Timestamp of creation
-	UpdatedAt         time.Time  `json:"updated_at"`                                 // Timestamp of last update
-	DeletedAt         *time.Time `gorm:"index" json:"deleted_at"`                    // Soft delete timestamp (nullable, pointer for nil value)
-	FirstName         string     `gorm:"not null" json:"firstName"`                  // User's first name, required
-	Email             string     `gorm:"unique;not null" json:"email"`               // Unique email, required
-	Password          string     `gorm:"not null" json:"-"`                          // Hashed password, excluded from JSON
-	DateOfBirth       string     `gorm:"not null" json:"dateOfBirth"`                // Date of birth in YYYY-MM-DD format, required
-	Gender            string     `gorm:"not null" json:"gender"`                     // User's gender, required
-	InterestedIn      string     `gorm:"not null" json:"interestedIn"`               // What the user is interested in (e.g., "dating", "friendship"), required
-	LookingFor        string     `gorm:"not null" json:"lookingFor"`                 // What the user is looking for (e.g., "relationship"), required
-	Interests         []string   `gorm:"type:json;serializer:json" json:"interests"` // List of user interests, stored as JSON
-	Bio               string     `gorm:"type:text" json:"bio"`                       // Optional user bio
-	SexualOrientation string     `json:"sexualOrientation"`                          // Optional sexual orientation
-	Photos            []string   `gorm:"type:json;serializer:json" json:"photos"`    // List of photo URLs, stored as JSON
-	AgeRange          string     `gorm:"type:varchar(50)" json:"ageRange"`           // Preferred age range (e.g., "18-25")
-	Distance          int        `gorm:"type:int" json:"distance"`                   // Preferred match distance in kilometers
-	GenderPreference  string     `gorm:"type:varchar(50)" json:"genderPreference"`   // Preferred gender for matches
-	ProfilePictureURL string     `gorm:"type:text" json:"profilePictureURL"`         // URL of the user's profile picture
-	Latitude          float64    `gorm:"type:double precision" json:"latitude"`      // User's latitude for geolocation
-	Longitude         float64    `gorm:"type:double precision" json:"longitude"`     // User's longitude for geolocation
+	// gorm.Model
+	ID                uint           `gorm:"primaryKey" json:"id"`
+	CreatedAt         time.Time      `json:"createdAt"`
+	UpdatedAt         time.Time      `json:"updatedAt"`
+	DeletedAt         gorm.DeletedAt `gorm:"index" json:"-"`
+	FirstName         string         `gorm:"not null" json:"firstName"`
+	Email             string         `gorm:"unique;not null" json:"email"`
+	Password          string         `gorm:"not null" json:"-"`
+	DateOfBirth       string         `gorm:"not null" json:"dateOfBirth"`
+	Gender            string         `gorm:"not null" json:"gender"`
+	InterestedIn      string         `gorm:"not null" json:"interestedIn"`
+	LookingFor        string         `gorm:"not null" json:"lookingFor"`
+	Interests         []string       `gorm:"type:json;serializer:json" json:"interests"`
+	Bio               string         `gorm:"type:text" json:"bio"`
+	SexualOrientation string         `json:"sexualOrientation"`
+	Photos            []string       `gorm:"type:json;serializer:json" json:"photos"`
+	AgeRange          string         `gorm:"type:varchar(50)" json:"ageRange"`
+	Distance          int            `gorm:"type:int" json:"distance"`
+	GenderPreference  string         `gorm:"type:varchar(50)" json:"genderPreference"`
+	ProfilePictureURL string         `gorm:"type:text" json:"profilePictureURL"`
 }
 
 // Interaction tracks user interactions (likes, dislikes, matches)

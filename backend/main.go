@@ -8,6 +8,7 @@ import (
 	"time"
 
 	_ "datingapp/docs" // Import Swagger docs
+	"datingapp/middleware"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -45,13 +46,23 @@ func main() {
 	// Serve Swagger documentation
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
-	// Public routes (no authentication required)
-	r.POST("/register", handlers.Register)                         // User registration endpoint
-	r.POST("/login", handlers.Login)                               // User login endpoint
-	r.GET("/matches/:user_id", handlers.GetMatches)                // Get potential matches
-	r.GET("/profile/:user_id", handlers.GetUserProfile)            // Get user profile
-	r.PUT("/profile/:user_id", handlers.UpdateUserProfile)         // Update user profile
-	r.PUT("/preferences/:user_id", handlers.UpdateUserPreferences) // Update preferences
+	// LOGIN APIS
+	// Public authentication routes
+	r.POST("/register", handlers.Register)
+	r.POST("/login", handlers.Login)
+
+	// USER PROFILE APIS - Protected with authentication middleware
+	// get profile info
+	r.GET("/profile/:user_id", middleware.AuthMiddleware(), handlers.GetUserProfile)
+	// update profile info
+	r.PUT("/profile/:user_id", middleware.AuthMiddleware(), handlers.UpdateUserProfile)
+	// update user preferences
+	r.PUT("/preferences/:user_id", middleware.AuthMiddleware(), handlers.UpdateUserPreferences)
+
+	// APIS ON MATCHMAING PAGE
+	// get all users for matching
+	r.GET("/matches/:user_id", middleware.AuthMiddleware(), handlers.GetMatches)
+	// API FOR MESSAGING
 
 	// Determine the port to run on (default to 8080 if not set)
 	port := os.Getenv("PORT")
