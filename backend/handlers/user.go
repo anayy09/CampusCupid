@@ -79,6 +79,7 @@ func Register(c *gin.Context) {
 // @Success 200 {object} map[string]string
 // @Failure 400 {object} map[string]string
 // @Failure 401 {object} map[string]string
+// @Failure 500 {object} map[string]string
 // @Router /login [post]
 func Login(c *gin.Context) {
 	var input models.LoginRequest
@@ -99,13 +100,22 @@ func Login(c *gin.Context) {
 		return
 	}
 
+	// Check if JWT_SECRET is set
+	jwtSecret := os.Getenv("JWT_SECRET")
+	if jwtSecret == "" {
+		fmt.Println("ERROR: JWT_SECRET environment variable is not set")
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal server configuration error"})
+		return
+	}
+
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"user_id": fmt.Sprintf("%d", user.ID), // Store as string
 		"exp":     time.Now().Add(time.Hour * 24).Unix(),
 	})
 
-	tokenString, err := token.SignedString([]byte(os.Getenv("JWT_SECRET")))
+	tokenString, err := token.SignedString([]byte(jwtSecret))
 	if err != nil {
+		fmt.Println("ERROR: Could not generate token:", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not generate token"})
 		return
 	}
