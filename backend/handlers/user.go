@@ -514,3 +514,392 @@ func GetMatches(c *gin.Context) {
 
 	c.JSON(http.StatusOK, matches)
 }
+
+// SendMessage sends a message from one user to another
+// @Summary Send a message
+// @Description Send a message to another user
+// @Tags messaging
+// @Accept json
+// @Produce json
+// @Param message body models.SendMessageRequest true "Message details"
+// @Security ApiKeyAuth
+// @Success 201 {object} map[string]interface{}
+// @Failure 400 {object} map[string]string
+// @Failure 401 {object} map[string]string
+// @Failure 403 {object} map[string]string
+// @Failure 404 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /messages [post]
+func SendMessage(c *gin.Context) {
+	// Get the authenticated user's ID from the context
+	senderID, exists := c.Get("userID")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Authentication required"})
+		return
+	}
+
+	// Bind JSON request
+	var req models.SendMessageRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Check if sender exists
+	var sender models.User
+	if err := database.DB.Where("id = ?", senderID).First(&sender).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Sender not found"})
+		return
+	}
+
+	// Check if receiver exists
+	var receiver models.User
+	if err := database.DB.Where("id = ?", req.ReceiverID).First(&receiver).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Receiver not found"})
+		return
+	}
+
+	// Check if users are matched
+	var interaction models.Interaction
+	matchExists := database.DB.Where("(user_id = ? AND target_id = ? AND matched = ?) OR (user_id = ? AND target_id = ? AND matched = ?)",
+		senderID, req.ReceiverID, true, req.ReceiverID, senderID, true).First(&interaction).Error == nil
+
+	if !matchExists {
+		c.JSON(http.StatusForbidden, gin.H{"error": "You can only send messages to users you have matched with"})
+		return
+	}
+
+	// Create and save the message
+	message := models.Message{
+		SenderID:   senderID.(uint),
+		ReceiverID: req.ReceiverID,
+		Content:    req.Content,
+		Read:       false,
+	}
+
+	if err := database.DB.Create(&message).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to send message"})
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{
+		"id":          message.ID,
+		"sender_id":   message.SenderID,
+		"receiver_id": message.ReceiverID,
+		"content":     message.Content,
+		"created_at":  message.CreatedAt,
+	})
+}
+
+// GetMessages retrieves the conversation between the current user and another user
+// @Summary Get conversation
+// @Description Get all messages between the current user and another user
+// @Tags messaging
+// @Accept json
+// @Produce json
+// @Param user_id path uint true "Other user's ID"
+// @Param page query int false "Page number" default(1)
+// @Param limit query int false "Messages per page" default(20)
+// @Security ApiKeyAuth
+// @Success 200 {array} models.Message
+// @Failure 400 {object} map[string]string
+// @Failure 401 {object} map[string]string
+// @Failure 403 {object} map[string]string
+// @Failure 404 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /messages/{user_id} [get]
+func GetMessages(c *gin.Context) {
+	// Get the current user's ID from the context
+	currentUserID, exists := c.Get("userID")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Authentication required"})
+		return
+	}
+
+	// Get the other user's ID from the URL parameter
+	otherUserID := c.Param("user_id")
+	otherUserIDUint, err := strconv.ParseUint(otherUserID, 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
+		return
+	}
+
+	// Check if users are matched
+	var interaction models.Interaction
+	matchExists := database.DB.Where("(user_id = ? AND target_id = ? AND matched = ?) OR (user_id = ? AND target_id = ? AND matched = ?)",
+		currentUserID, otherUserIDUint, true, otherUserIDUint, currentUserID, true).First(&interaction).Error == nil
+
+	if !matchExists {
+		c.JSON(http.StatusForbidden, gin.H{"error": "You can only view messages with users you have matched with"})
+		return
+	}
+
+	// Pagination parameters
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "20"))
+	offset := (page - 1) * limit
+
+	// Get messages between the two users
+	var messages []models.Message
+	if err := database.DB.Where(
+		"(sender_id = ? AND receiver_id = ?) OR (sender_id = ? AND receiver_id = ?)",
+		currentUserID, otherUserIDUint, otherUserIDUint, currentUserID,
+	).Order("created_at DESC").Limit(limit).Offset(offset).Find(&messages).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve messages"})
+		return
+	}
+
+	// Mark messages as read
+	database.DB.Model(&models.Message{}).
+		Where("sender_id = ? AND receiver_id = ? AND read = ?", otherUserIDUint, currentUserID, false).
+		Updates(map[string]interface{}{"read": true})
+
+	c.JSON(http.StatusOK, messages)
+}
+
+// GetConversations retrieves a list of all conversations for the current user
+// @Summary Get all conversations
+// @Description Get a list of all users the current user has exchanged messages with
+// @Tags messaging
+// @Accept json
+// @Produce json
+// @Security ApiKeyAuth
+// @Success 200 {array} map[string]interface{}
+// @Failure 401 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /conversations [get]
+func GetConversations(c *gin.Context) {
+	// Get the current user's ID from the context
+	currentUserID, exists := c.Get("userID")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Authentication required"})
+		return
+	}
+
+	// Find all unique users that the current user has exchanged messages with
+	var senderIDs []uint
+	database.DB.Model(&models.Message{}).
+		Where("receiver_id = ?", currentUserID).
+		Distinct("sender_id").
+		Pluck("sender_id", &senderIDs)
+
+	var receiverIDs []uint
+	database.DB.Model(&models.Message{}).
+		Where("sender_id = ?", currentUserID).
+		Distinct("receiver_id").
+		Pluck("receiver_id", &receiverIDs)
+
+	// Combine and deduplicate user IDs
+	userIDsMap := make(map[uint]bool)
+	for _, id := range senderIDs {
+		userIDsMap[id] = true
+	}
+	for _, id := range receiverIDs {
+		userIDsMap[id] = true
+	}
+
+	var userIDs []uint
+	for id := range userIDsMap {
+		userIDs = append(userIDs, id)
+	}
+
+	if len(userIDs) == 0 {
+		c.JSON(http.StatusOK, []map[string]interface{}{})
+		return
+	}
+
+	// Get user information for each conversation
+	var users []models.User
+	if err := database.DB.Where("id IN ?", userIDs).Find(&users).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve conversations"})
+		return
+	}
+
+	// Prepare response with last message and unread count for each conversation
+	conversations := make([]map[string]interface{}, 0, len(users))
+	for _, user := range users {
+		// Get last message
+		var lastMessage models.Message
+		if err := database.DB.Where(
+			"(sender_id = ? AND receiver_id = ?) OR (sender_id = ? AND receiver_id = ?)",
+			currentUserID, user.ID, user.ID, currentUserID,
+		).Order("created_at DESC").First(&lastMessage).Error; err != nil {
+			continue
+		}
+
+		// Count unread messages
+		var unreadCount int64
+		database.DB.Model(&models.Message{}).
+			Where("sender_id = ? AND receiver_id = ? AND read = ?", user.ID, currentUserID, false).
+			Count(&unreadCount)
+
+		conversations = append(conversations, map[string]interface{}{
+			"user": map[string]interface{}{
+				"id":                user.ID,
+				"firstName":         user.FirstName,
+				"profilePictureURL": user.ProfilePictureURL,
+			},
+			"lastMessage": map[string]interface{}{
+				"id":         lastMessage.ID,
+				"content":    lastMessage.Content,
+				"created_at": lastMessage.CreatedAt,
+				"sender_id":  lastMessage.SenderID,
+			},
+			"unreadCount": unreadCount,
+		})
+	}
+
+	c.JSON(http.StatusOK, conversations)
+}
+
+// LikeUser handles when a user likes another user
+// @Summary Like a user
+// @Description Record when a user likes another user and check for a match
+// @Tags matchmaking
+// @Accept json
+// @Produce json
+// @Param target_id path uint true "Target User ID"
+// @Security ApiKeyAuth
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} map[string]string
+// @Failure 401 {object} map[string]string
+// @Failure 404 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /like/{target_id} [post]
+func LikeUser(c *gin.Context) {
+	// Get the current user's ID from the context
+	userID, exists := c.Get("userID")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Authentication required"})
+		return
+	}
+
+	// Get the target user's ID from the URL parameter
+	targetID := c.Param("target_id")
+	targetIDUint, err := strconv.ParseUint(targetID, 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid target ID"})
+		return
+	}
+
+	// Check if the target user exists
+	var targetUser models.User
+	if err := database.DB.Where("id = ?", targetIDUint).First(&targetUser).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Target user not found"})
+		return
+	}
+
+	// Check if an interaction already exists
+	var existingInteraction models.Interaction
+	interactionExists := database.DB.Where("user_id = ? AND target_id = ?", userID, targetIDUint).First(&existingInteraction).Error == nil
+
+	if interactionExists {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "You have already interacted with this user"})
+		return
+	}
+
+	// Create the new interaction (like)
+	interaction := models.Interaction{
+		UserID:    userID.(uint),
+		TargetID:  uint(targetIDUint),
+		Liked:     true,
+		Matched:   false,
+		CreatedAt: time.Now(),
+	}
+
+	// Check if the target user has already liked the current user
+	var targetInteraction models.Interaction
+	isMatch := database.DB.Where("user_id = ? AND target_id = ? AND liked = ?", targetIDUint, userID, true).First(&targetInteraction).Error == nil
+
+	if isMatch {
+		// It's a match! Update both interactions
+		interaction.Matched = true
+
+		if err := database.DB.Model(&targetInteraction).Update("matched", true).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update target interaction"})
+			return
+		}
+	}
+
+	// Save the new interaction
+	if err := database.DB.Create(&interaction).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to record like"})
+		return
+	}
+
+	response := gin.H{
+		"success": true,
+		"liked":   true,
+		"matched": isMatch,
+	}
+
+	c.JSON(http.StatusOK, response)
+}
+
+// DislikeUser handles when a user dislikes another user
+// @Summary Dislike a user
+// @Description Record when a user dislikes another user
+// @Tags matchmaking
+// @Accept json
+// @Produce json
+// @Param target_id path uint true "Target User ID"
+// @Security ApiKeyAuth
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} map[string]string
+// @Failure 401 {object} map[string]string
+// @Failure 404 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /dislike/{target_id} [post]
+func DislikeUser(c *gin.Context) {
+	// Get the current user's ID from the context
+	userID, exists := c.Get("userID")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Authentication required"})
+		return
+	}
+
+	// Get the target user's ID from the URL parameter
+	targetID := c.Param("target_id")
+	targetIDUint, err := strconv.ParseUint(targetID, 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid target ID"})
+		return
+	}
+
+	// Check if the target user exists
+	var targetUser models.User
+	if err := database.DB.Where("id = ?", targetIDUint).First(&targetUser).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Target user not found"})
+		return
+	}
+
+	// Check if an interaction already exists
+	var existingInteraction models.Interaction
+	interactionExists := database.DB.Where("user_id = ? AND target_id = ?", userID, targetIDUint).First(&existingInteraction).Error == nil
+
+	if interactionExists {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "You have already interacted with this user"})
+		return
+	}
+
+	// Create the new interaction (dislike)
+	interaction := models.Interaction{
+		UserID:    userID.(uint),
+		TargetID:  uint(targetIDUint),
+		Liked:     false,
+		Matched:   false,
+		CreatedAt: time.Now(),
+	}
+
+	// Save the new interaction
+	if err := database.DB.Create(&interaction).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to record dislike"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"liked":   false,
+		"matched": false,
+	})
+}

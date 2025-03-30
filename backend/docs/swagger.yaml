@@ -10,6 +10,38 @@ definitions:
     - email
     - password
     type: object
+  models.Message:
+    properties:
+      content:
+        type: string
+      created_at:
+        type: string
+      id:
+        type: integer
+      read:
+        description: Whether the message has been read
+        type: boolean
+      receiver_id:
+        description: ID of the user receiving the message
+        type: integer
+      sender_id:
+        description: ID of the user sending the message
+        type: integer
+      updated_at:
+        type: string
+    type: object
+  models.SendMessageRequest:
+    properties:
+      content:
+        maxLength: 500
+        minLength: 1
+        type: string
+      receiver_id:
+        type: integer
+    required:
+    - content
+    - receiver_id
+    type: object
   models.UpdatePreferencesRequest:
     properties:
       ageRange:
@@ -113,6 +145,135 @@ info:
   title: CampusCupid API
   version: "1.0"
 paths:
+  /conversations:
+    get:
+      consumes:
+      - application/json
+      description: Get a list of all users the current user has exchanged messages
+        with
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              additionalProperties: true
+              type: object
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Get all conversations
+      tags:
+      - messaging
+  /dislike/{target_id}:
+    post:
+      consumes:
+      - application/json
+      description: Record when a user dislikes another user
+      parameters:
+      - description: Target User ID
+        in: path
+        name: target_id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Dislike a user
+      tags:
+      - matchmaking
+  /like/{target_id}:
+    post:
+      consumes:
+      - application/json
+      description: Record when a user likes another user and check for a match
+      parameters:
+      - description: Target User ID
+        in: path
+        name: target_id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Like a user
+      tags:
+      - matchmaking
   /login:
     post:
       consumes:
@@ -206,6 +367,126 @@ paths:
       summary: Get potential matches
       tags:
       - matchmaking
+  /messages:
+    post:
+      consumes:
+      - application/json
+      description: Send a message to another user
+      parameters:
+      - description: Message details
+        in: body
+        name: message
+        required: true
+        schema:
+          $ref: '#/definitions/models.SendMessageRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Send a message
+      tags:
+      - messaging
+  /messages/{user_id}:
+    get:
+      consumes:
+      - application/json
+      description: Get all messages between the current user and another user
+      parameters:
+      - description: Other user's ID
+        in: path
+        name: user_id
+        required: true
+        type: integer
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 20
+        description: Messages per page
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.Message'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Get conversation
+      tags:
+      - messaging
   /preferences/{user_id}:
     put:
       consumes:

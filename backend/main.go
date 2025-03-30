@@ -3,6 +3,7 @@ package main
 import (
 	"datingapp/database"
 	"datingapp/handlers"
+	"datingapp/models"
 	"log"
 	"os"
 	"time"
@@ -15,6 +16,9 @@ import (
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
 )
+
+// host for local development: @host localhost:8080
+// host for production: @host campuscupid-backend.onrender.com
 
 // @title CampusCupid API
 // @version 1.0
@@ -29,6 +33,9 @@ import (
 func main() {
 	// Initialize database connection
 	database.Connect()
+
+	// Migrate the Message model
+	database.DB.AutoMigrate(&models.Message{})
 
 	// Create a new Gin router with default middleware (logging, recovery)
 	r := gin.Default()
@@ -59,10 +66,21 @@ func main() {
 	// update user preferences
 	r.PUT("/preferences/:user_id", middleware.AuthMiddleware(), handlers.UpdateUserPreferences)
 
-	// APIS ON MATCHMAING PAGE
+	// MATCHMAKING APIS
 	// get all users for matching
 	r.GET("/matches/:user_id", middleware.AuthMiddleware(), handlers.GetMatches)
-	// API FOR MESSAGING
+	// like a user
+	r.POST("/like/:target_id", middleware.AuthMiddleware(), handlers.LikeUser)
+	// dislike a user
+	r.POST("/dislike/:target_id", middleware.AuthMiddleware(), handlers.DislikeUser)
+
+	// MESSAGING APIS
+	// Send a message to another user
+	r.POST("/messages", middleware.AuthMiddleware(), handlers.SendMessage)
+	// Get conversation with a specific user
+	r.GET("/messages/:user_id", middleware.AuthMiddleware(), handlers.GetMessages)
+	// Get all conversations
+	r.GET("/conversations", middleware.AuthMiddleware(), handlers.GetConversations)
 
 	// Determine the port to run on (default to 8080 if not set)
 	port := os.Getenv("PORT")

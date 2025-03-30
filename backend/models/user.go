@@ -44,6 +44,24 @@ type Interaction struct {
 	CreatedAt time.Time `json:"created_at"`                  // Timestamp of the interaction
 }
 
+// Message represents a chat message between users
+type Message struct {
+	ID         uint           `gorm:"primaryKey" json:"id"`
+	SenderID   uint           `gorm:"not null" json:"sender_id"`   // ID of the user sending the message
+	ReceiverID uint           `gorm:"not null" json:"receiver_id"` // ID of the user receiving the message
+	Content    string         `gorm:"type:text;not null" json:"content"`
+	Read       bool           `gorm:"default:false" json:"read"` // Whether the message has been read
+	CreatedAt  time.Time      `json:"created_at"`
+	UpdatedAt  time.Time      `json:"updated_at"`
+	DeletedAt  gorm.DeletedAt `gorm:"index" json:"-"`
+}
+
+// SendMessageRequest defines the structure for sending a message
+type SendMessageRequest struct {
+	ReceiverID uint   `json:"receiver_id" binding:"required"`
+	Content    string `json:"content" binding:"required,min=1,max=500"`
+}
+
 // validatePhotos ensures at least one photo is provided
 func validatePhotos(fl validator.FieldLevel) bool {
 	return len(fl.Field().Interface().([]string)) > 0
