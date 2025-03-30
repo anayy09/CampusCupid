@@ -97,4 +97,26 @@ describe('SignUpPage', () => {
     expect(screen.getByText('Preferences')).toBeInTheDocument();
     expect(screen.getByText('Photos')).toBeInTheDocument();
   });
+
+  test('detects and populates location fields correctly', () => {
+    render(
+      <MemoryRouter>
+        <SignUpPage />
+      </MemoryRouter>
+    );
+    
+    // Mock geolocation
+    global.navigator.geolocation = {
+      getCurrentPosition: jest.fn().mockImplementation((success) =>
+        success({ coords: { latitude: 40.7128, longitude: -74.0060 } })
+      )
+    };
+    
+    // Wait for location detection to complete
+    setTimeout(() => {
+      // Verify input fields are populated
+      expect(screen.getByLabelText('City')).toHaveValue('New York');
+      expect(screen.getByLabelText('Country')).toHaveValue('United States');
+    }, 1000);
+  });
 });

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Autocomplete from '@mui/material/Autocomplete';
 import Chip from '@mui/material/Chip';
@@ -23,9 +23,7 @@ import {
   Grid,
   Snackbar,
   Alert,
-  Dialog,
-  DialogContent,
-  Zoom
+  CircularProgress
 } from '@mui/material';
 
 const theme = createTheme({
@@ -131,18 +129,109 @@ function SignUpPage() {
     sexualOrientation: 'Straight', // Default value
     bio: '', // Added bio field
     photos: [],
+    location: {
+      latitude: null,
+      longitude: null,
+      city: '',
+      country: ''
+    }
   });
   const [previewUrls, setPreviewUrls] = useState([]);
   const [errors, setErrors] = useState({
     dateOfBirth: '',
     password: '',
     bio: '',
+    location: ''
   });
   const [submitError, setSubmitError] = useState('');
   const [openSnackbar, setOpenSnackbar] = useState(false);
-  const [showCelebration, setShowCelebration] = useState(false);
+  const [loadingLocation, setLoadingLocation] = useState(false);
 
   const steps = ['Basic Info', 'About You', 'Photos'];
+
+  // Get user's location when component mounts
+  useEffect(() => {
+    getUserLocation();
+  }, []);
+
+  // Function to get user's location
+  const getUserLocation = () => {
+    setLoadingLocation(true);
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        async (position) => {
+          const { latitude, longitude } = position.coords;
+          
+          try {
+            // Use reverse geocoding to get city and country
+            const response = await fetch(
+              `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=10`
+            );
+            
+            if (response.ok) {
+              const data = await response.json();
+              const city = data.address.city || data.address.town || data.address.village || '';
+              const country = data.address.country || '';
+              
+              setFormData(prev => ({
+                ...prev,
+                location: {
+                  latitude,
+                  longitude,
+                  city,
+                  country
+                }
+              }));
+            } else {
+              // If reverse geocoding fails, just store coordinates
+              setFormData(prev => ({
+                ...prev,
+                location: {
+                  latitude,
+                  longitude,
+                  city: '',
+                  country: ''
+                }
+              }));
+            }
+          } catch (error) {
+            console.error('Error fetching location details:', error);
+            setErrors(prev => ({
+              ...prev,
+              location: 'Failed to get location details. Please try again or enter manually.'
+            }));
+          } finally {
+            setLoadingLocation(false);
+          }
+        },
+        (error) => {
+          console.error('Error getting location:', error);
+          setErrors(prev => ({
+            ...prev,
+            location: 'Failed to get location. Please enable location services or enter manually.'
+          }));
+          setLoadingLocation(false);
+        }
+      );
+    } else {
+      setErrors(prev => ({
+        ...prev,
+        location: 'Geolocation is not supported by this browser.'
+      }));
+      setLoadingLocation(false);
+    }
+  };
+
+  // Handle manual location input
+  const handleLocationChange = (field) => (event) => {
+    setFormData({
+      ...formData,
+      location: {
+        ...formData.location,
+        [field]: event.target.value
+      }
+    });
+  };
 
   // Validate age (18+)
   const validateAge = (dateString) => {
@@ -254,69 +343,6 @@ function SignUpPage() {
     setPreviewUrls(newPreviewUrls);
   };
 
-  // Celebration Dialog
-  const CelebrationDialog = () => (
-    <Dialog 
-      open={showCelebration} 
-      maxWidth="sm" 
-      fullWidth
-      PaperProps={{
-        style: {
-          backgroundColor: 'transparent',
-          boxShadow: 'none',
-          overflow: 'hidden'
-        }
-      }}
-    >
-      <DialogContent sx={{ 
-        textAlign: 'center', 
-        backgroundColor: 'rgba(255, 255, 255, 0.9)',
-        borderRadius: '20px',
-        padding: 4
-      }}>
-        <Zoom in={showCelebration} timeout={500}>
-          <Box>
-            <Typography 
-              variant="h4" 
-              sx={{ 
-                mb: 2, 
-                fontWeight: 'bold',
-                background: '-webkit-linear-gradient(45deg, #FE3C72 30%, #FF6036 90%)',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-                animation: 'pulse 1.5s infinite'
-              }}
-            >
-              Welcome to Campus Cupid!
-            </Typography>
-            <Typography variant="h6" sx={{ mb: 3 }}>
-              Your account has been created successfully!
-            </Typography>
-            <Box sx={{ 
-              fontSize: '4rem', 
-              display: 'flex',
-              justifyContent: 'center',
-              animation: 'bounce 1s infinite alternate'
-            }}>
-              ❤️ 💕 ❤️
-            </Box>
-          </Box>
-        </Zoom>
-      </DialogContent>
-      <style jsx>{`
-        @keyframes pulse {
-          0% { transform: scale(1); }
-          50% { transform: scale(1.05); }
-          100% { transform: scale(1); }
-        }
-        @keyframes bounce {
-          from { transform: translateY(0px); }
-          to { transform: translateY(-15px); }
-        }
-      `}</style>
-    </Dialog>
-  );
-
   // Convert form data to match backend API expectations
   const prepareFormDataForSubmission = () => {
     // Map the gender values to match backend expectations
@@ -357,8 +383,14 @@ function SignUpPage() {
       lookingFor: lookingForMap[formData.lookingFor] || formData.lookingFor,
       interests: formData.interests,
       sexualOrientation: formData.sexualOrientation,
-      bio: formData.bio, // Added bio to API submission
-      photos: photoUrls
+      bio: formData.bio,
+      photos: photoUrls,
+      location: {
+        latitude: formData.location.latitude,
+        longitude: formData.location.longitude,
+        city: formData.location.city,
+        country: formData.location.country
+      }
     };
   };
 
@@ -372,12 +404,9 @@ function SignUpPage() {
       }
 
       // Prepare data for API
-      
-      // add something here  ///////////////----------------------------------------------
       const apiData = prepareFormDataForSubmission();
       console.log('Submitting data to API:', apiData);
-
-      // ------------------------------------------------------------------------ something to entertain user 
+   
       // Make API call to register endpoint
       const response = await fetch(`${API_URL}/register`, {
         method: 'POST',
@@ -392,13 +421,8 @@ function SignUpPage() {
         throw new Error(errorData.error || 'Registration failed');
       }
 
-      // Show celebration dialog on successful registration
-      setShowCelebration(true);
-      
-      // Redirect to login page after a delay
-      setTimeout(() => {
-        navigate('/login');
-      }, 2000);
+      // Simply redirect to login page after successful registration (no animation)
+      navigate('/login');
       
     } catch (error) {
       console.error('Error during registration:', error);
@@ -483,6 +507,60 @@ function SignUpPage() {
                 style: { color: '#757575' },
               }}
             />
+            
+            {/* Location Information */}
+            <Box sx={{ mt: 3, mb: 2 }}>
+              <Typography variant="subtitle1" sx={{ mb: 1 }}>Your Location</Typography>
+              
+              {loadingLocation ? (
+                <Box display="flex" alignItems="center" gap={2}>
+                  <CircularProgress size={20} />
+                  <Typography variant="body2">Detecting your location...</Typography>
+                </Box>
+              ) : (
+                <>
+                  <Button 
+                    variant="outlined" 
+                    color="primary" 
+                    onClick={getUserLocation}
+                    sx={{ mb: 2 }}
+                  >
+                    Detect My Location
+                  </Button>
+                  
+                  {errors.location && (
+                    <Typography color="error" variant="body2" sx={{ mb: 1 }}>
+                      {errors.location}
+                    </Typography>
+                  )}
+                  
+                  <Grid container spacing={2}>
+                    <Grid item xs={6}>
+                      <StyledTextField
+                        fullWidth
+                        label="City"
+                        value={formData.location.city}
+                        onChange={handleLocationChange('city')}
+                        InputProps={{
+                          style: { color: '#757575' },
+                        }}
+                      />
+                    </Grid>
+                    <Grid item xs={6}>
+                      <StyledTextField
+                        fullWidth
+                        label="Country"
+                        value={formData.location.country}
+                        onChange={handleLocationChange('country')}
+                        InputProps={{
+                          style: { color: '#757575' },
+                        }}
+                      />
+                    </Grid>
+                  </Grid>
+                </>
+              )}
+            </Box>
           </Box>
         );
 
@@ -576,7 +654,6 @@ function SignUpPage() {
               />
             </Box>
 
-            {/* Added Bio TextField */}
             <Box sx={{ mb: 3, width: '100%' }}>
               <FormLabel component="legend" sx={{ mb: 1 }}>About You</FormLabel>
               <StyledTextField
@@ -716,9 +793,6 @@ function SignUpPage() {
           {submitError}
         </Alert>
       </Snackbar>
-
-      {/* Celebration Dialog */}
-      <CelebrationDialog />
     </ThemeProvider>
   );
 }
