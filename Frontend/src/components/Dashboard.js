@@ -109,6 +109,10 @@ function DashboardPage() {
     navigate('/matcher');
   };
 
+  const handleViewProfile = () => {
+    navigate('/editprofile');
+  };
+
   const handleViewMatches = () => {
     navigate('/matches');
   };
@@ -325,6 +329,7 @@ function DashboardPage() {
                     },
                     transition: 'all 0.3s ease'
                   }}
+                  onClick={handleViewProfile}
                 >
                   Edit Profile
                 </Button>
@@ -619,7 +624,7 @@ function DashboardPage() {
           </Grid>        </Paper>
         
         {/* Activity feed section */}
-        <Paper 
+        {/* <Paper 
           elevation={3} 
           sx={{ 
             p: 4, 
@@ -644,7 +649,7 @@ function DashboardPage() {
           </Typography>
           
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-            {/* Show a message if there's no activity */}
+            
             <Box sx={{ 
               p: 3, 
               textAlign: 'center', 
@@ -677,7 +682,7 @@ function DashboardPage() {
               </Button>
             </Box>
           </Box>
-        </Paper>
+        </Paper> */}
 
         <Snackbar 
           open={openSnackbar} 

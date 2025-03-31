@@ -9,6 +9,7 @@ import MatchesPage from "./components/MatchesPage";
 import SettingsPage from "./components/SettingsPage";
 import ThemeProvider from "./components/common/ThemeProvider";
 import { CssBaseline } from "@mui/material";
+import EditProfilePage from "./components/EditProfilePage";
 
 function App() {
   return (
@@ -26,6 +27,7 @@ function App() {
           <Route path="/matcher" element={<MatcherPage />} />
           <Route path="/matches" element={<MatchesPage />} />
           <Route path="/settings" element={<SettingsPage />} />
+          <Route path="/editprofile" element={<EditProfilePage />} />
         </Routes>
       </Router>
     </ThemeProvider>
