@@ -30,6 +30,14 @@ definitions:
       updated_at:
         type: string
     type: object
+  models.ReportRequest:
+    properties:
+      reason:
+        description: Required field for the report reason
+        type: string
+    required:
+    - reason
+    type: object
   models.SendMessageRequest:
     properties:
       content:
@@ -710,4 +718,59 @@ paths:
       summary: Update user profile by user_id
       tags:
       - users
+  /report/{target_id}:
+    post:
+      consumes:
+      - application/json
+      description: Submits a report against a target user with a reason
+      parameters:
+      - description: Target User ID
+        in: path
+        name: target_id
+        required: true
+        type: integer
+      - description: Report details
+        in: body
+        name: report
+        required: true
+        schema:
+          $ref: '#/definitions/models.ReportRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Report a user
+      tags:
+      - matchmaking
 swagger: "2.0"
