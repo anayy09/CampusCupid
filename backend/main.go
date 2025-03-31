@@ -65,6 +65,8 @@ func main() {
 	r.PUT("/profile/:user_id", middleware.AuthMiddleware(), handlers.UpdateUserProfile)
 	// update user preferences
 	r.PUT("/preferences/:user_id", middleware.AuthMiddleware(), handlers.UpdateUserPreferences)
+	//Delete user account
+	r.DELETE("/profile/:user_id", middleware.AuthMiddleware(), handlers.DeleteUserProfile) // New route
 
 	// MATCHMAKING APIS
 	// get all users for matching
