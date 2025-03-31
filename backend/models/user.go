@@ -10,8 +10,8 @@ import (
 )
 
 // User represents a user in the dating app
+// User represents a user in the dating app
 type User struct {
-	// gorm.Model
 	ID                uint           `gorm:"primaryKey" json:"id"`
 	CreatedAt         time.Time      `json:"createdAt"`
 	UpdatedAt         time.Time      `json:"updatedAt"`
@@ -33,6 +33,7 @@ type User struct {
 	ProfilePictureURL string         `gorm:"type:text" json:"profilePictureURL"`
 	Latitude          float64        `gorm:"type:float" json:"latitude"`
 	Longitude         float64        `gorm:"type:float" json:"longitude"`
+	BlockedUsers      []uint         `gorm:"type:json;serializer:json" json:"blockedUsers"` // New field for blocked user IDs
 }
 
 // Interaction tracks user interactions (likes, dislikes, matches)
