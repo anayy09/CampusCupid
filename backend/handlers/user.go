@@ -440,78 +440,42 @@ func UpdateUserPreferences(c *gin.Context) {
 // @Failure 500 {object} map[string]string
 // @Router /matches/{user_id} [get]
 func GetMatches(c *gin.Context) {
-	// Extract user_id from path
 	userID := c.Param("user_id")
-	userIDUint, err := strconv.ParseUint(userID, 10, 64)
+	authenticatedUserID, exists := c.Get("userID")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Authentication required"})
+		return
+	}
+
+	paramUserID, err := strconv.ParseUint(userID, 10, 32)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
 		return
 	}
 
-	// Pagination parameters
-	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
-	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
-	offset := (page - 1) * limit
+	if uint(paramUserID) != authenticatedUserID.(uint) {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Access denied"})
+		return
+	}
 
-	// Fetch the current user
 	var user models.User
-	if err := database.DB.Where("id = ?", userIDUint).First(&user).Error; err != nil {
+	if err := database.DB.Where("id = ?", paramUserID).First(&user).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
 		return
 	}
 
-	// Parse age range (e.g., "18-25")
-	var minAge, maxAge int
-	if user.AgeRange != "" {
-		ages := strings.Split(user.AgeRange, "-")
-		if len(ages) == 2 {
-			minAge, _ = strconv.Atoi(ages[0])
-			maxAge, _ = strconv.Atoi(ages[1])
-		}
-	}
-
-	// Calculate date range for age filtering
-	now := time.Now()
-	minDOB := now.AddDate(-maxAge-1, 0, 0).Format("2006-01-02")
-	maxDOB := now.AddDate(-minAge, 0, 0).Format("2006-01-02")
-
-	// Get users already interacted with (liked, disliked, or matched)
-	var interactions []models.Interaction
-	database.DB.Where("user_id = ?", userIDUint).Find(&interactions)
-	excludeIDs := []uint{uint(userIDUint)} // Exclude self
-	for _, i := range interactions {
-		excludeIDs = append(excludeIDs, i.TargetID)
-	}
-
-	// Build the query for potential matches
 	var matches []models.User
-	query := database.DB.Model(&models.User{}).
-		Where("id NOT IN ?", excludeIDs).
-		Where("gender = ?", user.GenderPreference)
+	query := database.DB.Where("id != ? AND gender IN (?) AND interested_in = ? AND looking_for = ?",
+		paramUserID, strings.Split(user.InterestedIn, ","), user.Gender, user.LookingFor)
 
-	// Apply age range filter if specified
-	if minAge > 0 && maxAge > 0 {
-		query = query.Where("date_of_birth BETWEEN ? AND ?", minDOB, maxDOB)
+	// Filter out blocked users
+	if len(user.BlockedUsers) > 0 {
+		query = query.Where("id NOT IN ?", user.BlockedUsers)
 	}
 
-	// Apply distance filter if geolocation is available
-	if user.Latitude != 0 && user.Longitude != 0 && user.Distance > 0 {
-		query = query.Where(`
-			6371 * acos(cos(radians(?)) * cos(radians(latitude)) * 
-			cos(radians(longitude) - radians(?)) + 
-			sin(radians(?)) * sin(radians(latitude))) <= ?`,
-			user.Latitude, user.Longitude, user.Latitude, user.Distance)
-	}
-
-	// Execute query with pagination
-	if err := query.Limit(limit).Offset(offset).Find(&matches).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not fetch matches"})
+	if err := query.Find(&matches).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve matches"})
 		return
-	}
-
-	// Strip sensitive data (e.g., Password)
-	for i := range matches {
-		matches[i].Password = ""
 	}
 
 	c.JSON(http.StatusOK, matches)
@@ -1028,4 +992,75 @@ func ReportUser(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusCreated, gin.H{"message": "Report submitted successfully"})
+}
+
+// BlockUser allows a user to block another user
+// @Summary Block a user
+// @Description Blocks a target user, preventing further interaction or visibility
+// @Tags matchmaking
+// @Accept json
+// @Produce json
+// @Param target_id path uint true "Target User ID"
+// @Security ApiKeyAuth
+// @Success 200 {object} map[string]string
+// @Failure 400 {object} map[string]string
+// @Failure 401 {object} map[string]string
+// @Failure 404 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /block/{target_id} [post]
+func BlockUser(c *gin.Context) {
+	targetID := c.Param("target_id")
+
+	// Get the authenticated user's ID from the context
+	authenticatedUserID, exists := c.Get("userID")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Authentication required"})
+		return
+	}
+
+	// Convert the target ID to uint
+	targetUserID, err := strconv.ParseUint(targetID, 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid target user ID"})
+		return
+	}
+
+	// Prevent users from blocking themselves
+	if uint(targetUserID) == authenticatedUserID.(uint) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "You cannot block yourself"})
+		return
+	}
+
+	// Check if the target user exists
+	var targetUser models.User
+	if err := database.DB.Where("id = ?", targetUserID).First(&targetUser).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Target user not found"})
+		return
+	}
+
+	// Retrieve the authenticated user
+	var user models.User
+	if err := database.DB.Where("id = ?", authenticatedUserID).First(&user).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve user"})
+		return
+	}
+
+	// Check if the target is already blocked
+	for _, blockedID := range user.BlockedUsers {
+		if blockedID == uint(targetUserID) {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "User is already blocked"})
+			return
+		}
+	}
+
+	// Add the target user to the blocked list
+	user.BlockedUsers = append(user.BlockedUsers, uint(targetUserID))
+
+	// Save the updated user
+	if err := database.DB.Save(&user).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to block user"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "User blocked successfully"})
 }

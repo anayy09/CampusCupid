@@ -77,6 +77,8 @@ func main() {
 	r.POST("/dislike/:target_id", middleware.AuthMiddleware(), handlers.DislikeUser)
 	//Report user
 	r.POST("/report/:target_id", middleware.AuthMiddleware(), handlers.ReportUser) // New route
+	// Block user
+	r.POST("/block/:target_id", middleware.AuthMiddleware(), handlers.BlockUser) // New route
 
 	// MESSAGING APIS
 	// Send a message to another user
