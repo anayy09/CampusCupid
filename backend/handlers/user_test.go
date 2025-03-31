@@ -853,3 +853,101 @@ func TestBlockUser(t *testing.T) {
 		})
 	}
 }
+
+func TestUnblockUser(t *testing.T) {
+	db := setupTestDB()
+	router := setupRouter(db)
+
+	// Register two users
+	blocker := models.User{
+		FirstName:         "Alice",
+		Email:             "alice@example.com",
+		Password:          "password123",
+		DateOfBirth:       "1990-01-01",
+		Gender:            "Female",
+		InterestedIn:      "Male",
+		LookingFor:        "Relationship",
+		Interests:         []string{"Hiking"},
+		SexualOrientation: "Straight",
+		Photos:            []string{"photo1.jpg"},
+	}
+	blocker.HashPassword(blocker.Password)
+	db.Create(&blocker)
+
+	target := models.User{
+		FirstName:         "Bob",
+		Email:             "bob@example.com",
+		Password:          "password123",
+		DateOfBirth:       "1990-01-01",
+		Gender:            "Male",
+		InterestedIn:      "Female",
+		LookingFor:        "Relationship",
+		Interests:         []string{"Reading"},
+		SexualOrientation: "Straight",
+		Photos:            []string{"photo2.jpg"},
+	}
+	target.HashPassword(target.Password)
+	db.Create(&target)
+
+	// Fetch the latest user IDs dynamically
+	var latestBlocker, latestTarget models.User
+	db.Order("id desc").First(&latestBlocker)
+	db.Where("email = ?", "bob@example.com").First(&latestTarget)
+	targetID := strconv.Itoa(int(latestTarget.ID))
+
+	// Block the target user first
+	latestBlocker.BlockedUsers = append(latestBlocker.BlockedUsers, latestTarget.ID)
+	db.Save(&latestBlocker)
+
+	tests := []struct {
+		name         string
+		targetID     string
+		expectedCode int
+		expectedBody string
+	}{
+		{
+			name:         "Successful Unblock",
+			targetID:     targetID,
+			expectedCode: http.StatusOK,
+			expectedBody: `{"message":"User unblocked successfully"}`,
+		},
+		{
+			name:         "Target User Not Found",
+			targetID:     "999",
+			expectedCode: http.StatusNotFound,
+			expectedBody: `{"error":"Target user not found"}`,
+		},
+		{
+			name:         "User Not Blocked",
+			targetID:     targetID, // Run after unblocking to test non-blocked state
+			expectedCode: http.StatusBadRequest,
+			expectedBody: `{"error":"User is not blocked"}`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req, _ := http.NewRequest("DELETE", "/block/"+tt.targetID, nil)
+			w := httptest.NewRecorder()
+			router.ServeHTTP(w, req)
+
+			assert.Equal(t, tt.expectedCode, w.Code)
+			assert.Contains(t, w.Body.String(), tt.expectedBody)
+
+			result := TestResult{
+				TestName: tt.name,
+				Status:   http.StatusText(w.Code),
+				Response: w.Body.String(),
+			}
+			writeTestResult("/block/:target_id", result)
+
+			// For the "User Not Blocked" test, ensure the user is unblocked after the first test
+			if tt.name == "Successful Unblock" {
+				var updatedUser models.User
+				db.Where("id = ?", latestBlocker.ID).First(&updatedUser)
+				updatedUser.BlockedUsers = []uint{} // Clear blocked list for next test
+				db.Save(&updatedUser)
+			}
+		})
+	}
+}
