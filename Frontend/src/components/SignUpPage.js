@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Autocomplete from '@mui/material/Autocomplete';
+import IconButton from '@mui/material/IconButton';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import Chip from '@mui/material/Chip';
 import {
   Container,
@@ -115,6 +117,10 @@ const API_URL = 'https://campuscupid-backend.onrender.com';
 
 function SignUpPage() {
   const navigate = useNavigate();
+  const navigateToHome = () => {
+    navigate('/');
+  };
+
   const [activeStep, setActiveStep] = useState(0);
   const [formData, setFormData] = useState({
     firstName: '',
@@ -738,7 +744,24 @@ function SignUpPage() {
     <ThemeProvider theme={theme}>
       <Container maxWidth="sm">
         <Box sx={{ minHeight: '100vh', py: 4 }}>
-          <Paper elevation={3} sx={{ p: 4 }}>
+          <Paper elevation={3} sx={{ p: 4, position: 'relative' }}>
+            {/* Home navigation button */}
+            <IconButton
+              onClick={() => navigate('/')}
+              sx={{
+                position: 'absolute',
+                left: 16,
+                top: 16,
+                color: theme.palette.primary.main,
+                '&:hover': {
+                  backgroundColor: 'rgba(254, 60, 114, 0.1)',
+                },
+              }}
+              aria-label="back to home"
+            >
+              <ArrowBackIcon />
+            </IconButton>
+
             <Typography
               variant="h4"
               sx={{
