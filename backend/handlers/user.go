@@ -903,3 +903,55 @@ func DislikeUser(c *gin.Context) {
 		"matched": false,
 	})
 }
+
+// Delete user account
+// DeleteUserProfile deletes the authenticated user's account
+// @Summary Delete user profile
+// @Description Permanently deletes the authenticated user's account
+// @Tags users
+// @Accept json
+// @Produce json
+// @Param user_id path uint true "User ID"
+// @Security ApiKeyAuth
+// @Success 200 {object} map[string]string
+// @Failure 401 {object} map[string]string
+// @Failure 403 {object} map[string]string
+// @Failure 404 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /profile/{user_id} [delete]
+func DeleteUserProfile(c *gin.Context) {
+	userID := c.Param("user_id")
+
+	// Get the authenticated user's ID from the context
+	authenticatedUserID, exists := c.Get("userID")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Authentication required"})
+		return
+	}
+
+	// Convert the parameter to uint for comparison
+	paramUserID, err := strconv.ParseUint(userID, 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
+		return
+	}
+
+	// Check if the authenticated user is deleting their own profile
+	if uint(paramUserID) != authenticatedUserID.(uint) {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Access denied: You can only delete your own profile"})
+		return
+	}
+
+	// Delete the user from the database
+	result := database.DB.Where("id = ?", paramUserID).Delete(&models.User{})
+	if result.Error != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete profile"})
+		return
+	}
+	if result.RowsAffected == 0 {
+		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Profile deleted successfully"})
+}
