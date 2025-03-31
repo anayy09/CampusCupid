@@ -1064,3 +1064,79 @@ func BlockUser(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"message": "User blocked successfully"})
 }
+
+// UnblockUser removes a user from the authenticated user's blocked list
+// @Summary Unblock a user
+// @Description Removes a target user from the authenticated user's blocked list
+// @Tags matchmaking
+// @Produce json
+// @Param target_id path uint true "Target User ID"
+// @Security ApiKeyAuth
+// @Success 200 {object} map[string]string
+// @Failure 400 {object} map[string]string
+// @Failure 401 {object} map[string]string
+// @Failure 404 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /block/{target_id} [delete]
+func UnblockUser(c *gin.Context) {
+	targetID := c.Param("target_id")
+
+	// Get the authenticated user's ID from the context
+	authenticatedUserID, exists := c.Get("userID")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Authentication required"})
+		return
+	}
+
+	// Convert the target ID to uint
+	targetUserID, err := strconv.ParseUint(targetID, 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid target user ID"})
+		return
+	}
+
+	// Prevent unblocking self (though it’s unlikely to be an issue, added for consistency)
+	if uint(targetUserID) == authenticatedUserID.(uint) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "You cannot unblock yourself"})
+		return
+	}
+
+	// Check if the target user exists
+	var targetUser models.User
+	if err := database.DB.Where("id = ?", targetUserID).First(&targetUser).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Target user not found"})
+		return
+	}
+
+	// Retrieve the authenticated user
+	var user models.User
+	if err := database.DB.Where("id = ?", authenticatedUserID).First(&user).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve user"})
+		return
+	}
+
+	// Check if the target is in the blocked list
+	blockedIndex := -1
+	for i, blockedID := range user.BlockedUsers {
+		if blockedID == uint(targetUserID) {
+			blockedIndex = i
+			break
+		}
+	}
+
+	if blockedIndex == -1 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "User is not blocked"})
+		return
+	}
+
+	// Remove the target user from the blocked list
+	user.BlockedUsers = append(user.BlockedUsers[:blockedIndex], user.BlockedUsers[blockedIndex+1:]...)
+
+	// Save the updated user
+	if err := database.DB.Save(&user).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to unblock user"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "User unblocked successfully"})
+}
