@@ -1,122 +1,171 @@
-// src/components/SignUpPage.test.js
-
-// Mock the useNavigate hook before importing anything
-jest.mock('react-router-dom', () => ({
-  ...jest.requireActual('react-router-dom'),  // Preserve other imports
-  useNavigate: jest.fn(),  // Mock the useNavigate hook
-}));
-
-import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
-import SignUpPage from './SignUpPage';
-import '@testing-library/jest-dom';
-
-describe('SignUpPage', () => {
-  // Create a mock function for useNavigate
-  const mockNavigate = jest.fn();
-
+// cypress/e2e/signup-page.cy.js
+describe('Sign Up Page', () => {
   beforeEach(() => {
-    // Redefine useNavigate to return the mock function before each test
-    jest.spyOn(require('react-router-dom'), 'useNavigate').mockReturnValue(mockNavigate);
-    mockNavigate.mockClear();  // Clear the mock before each test
+    cy.visit('/signup');
+    // Mock geolocation API
+    cy.window().then((win) => {
+      cy.stub(win.navigator.geolocation, 'getCurrentPosition').callsFake((cb) => {
+        return cb({
+          coords: {
+            latitude: 40.7128,
+            longitude: -74.0060
+          }
+        });
+      });
+    });
+    
+    // Mock API calls
+    cy.intercept('GET', 'https://nominatim.openstreetmap.org/reverse*', {
+      statusCode: 200,
+      body: {
+        address: {
+          city: 'New York',
+          country: 'United States'
+        }
+      }
+    }).as('geocodingRequest');
+    
+    cy.intercept('POST', '**/register', {
+      statusCode: 200,
+      body: { message: 'Registration successful' }
+    }).as('registerRequest');
   });
 
-  test('signup form validates user is at least 18 years old', () => {
-    render(
-      <MemoryRouter>
-        <SignUpPage />
-      </MemoryRouter>
-    );
+  it('displays the stepper with all steps', () => {
+    cy.contains('Join Campus Cupid').should('be.visible');
+    cy.contains('Basic Info').should('be.visible');
+    cy.contains('About You').should('be.visible');
+    cy.contains('Photos').should('be.visible');
+  });
+
+  it('validates age is 18+ on basic info page', () => {
+    // Fill form with underage birth date
+    cy.get('input[name="firstName"]').type('Test User');
+    cy.get('input[type="email"]').type('test@example.com');
+    cy.get('input[type="password"]').first().type('password123');
+    cy.get('input[type="password"]').last().type('password123');
     
-    // Enter age less than 18 years ago
-    const today = new Date();
-    const underageDate = new Date(today.getFullYear() - 17, today.getMonth(), today.getDate());
+    // Current date minus 17 years
+    const underageDate = new Date();
+    underageDate.setFullYear(underageDate.getFullYear() - 17);
     const formattedDate = underageDate.toISOString().split('T')[0];
     
-    const dobInput = screen.getByLabelText('Date of Birth');
-    fireEvent.change(dobInput, { target: { value: formattedDate } });
+    cy.get('input[type="date"]').type(formattedDate);
+    cy.contains('button', 'Next').click();
     
-    // Click next to proceed to next step
-    const nextButton = screen.getByText('Next');
-    fireEvent.click(nextButton);
-    
-    // The error message should appear for underage users
-    expect(screen.getByText('You must be at least 18 years old to sign up')).toBeInTheDocument();
-    
-    // Now try with a valid age
-    const validDate = new Date(today.getFullYear() - 19, today.getMonth(), today.getDate());
-    const formattedValidDate = validDate.toISOString().split('T')[0];
-    
-    fireEvent.change(dobInput, { target: { value: formattedValidDate } });
-    fireEvent.click(nextButton);
-    
-    // Should advance to next step and not show error message
-    expect(screen.queryByText('You must be at least 18 years old to sign up')).not.toBeInTheDocument();
+    cy.contains('You must be at least 18 years old to register').should('be.visible');
   });
 
-  test('photo upload in signup form', () => {
-    render(
-      <MemoryRouter>
-        <SignUpPage />
-      </MemoryRouter>
-    );
+  it('validates password match on basic info page', () => {
+    cy.get('input[name="firstName"]').type('Test User');
+    cy.get('input[type="email"]').type('test@example.com');
+    cy.get('input[type="password"]').first().type('password123');
+    cy.get('input[type="password"]').last().type('differentpassword');
     
-    // Fill out first step
-    const dobInput = screen.getByLabelText('Date of Birth');
+    // Valid date
     const validDate = new Date();
     validDate.setFullYear(validDate.getFullYear() - 20);
-    fireEvent.change(dobInput, { target: { value: validDate.toISOString().split('T')[0] } });
+    const formattedDate = validDate.toISOString().split('T')[0];
     
-    // Advance to the photo upload step
-    const nextButton = screen.getByText('Next');
-    fireEvent.click(nextButton); // Move to step 2
-    fireEvent.click(nextButton); // Move to step 3 (photo upload)
+    cy.get('input[type="date"]').type(formattedDate);
+    cy.contains('button', 'Next').click();
     
-    // Create a mock file
-    const file = new File(['(⌐□_□)'], 'profile.png', { type: 'image/png' });
-    
-    // Find file input and simulate upload
-    const fileInput = screen.getByLabelText(/Click to upload photo/i, { exact: false });
-    fireEvent.change(fileInput, { target: { files: [file] } });
-    
-    // Verify the upload count changes
-    // This will pass once you implement the photo upload functionality
-    expect(screen.getByText('1/9 photos uploaded')).toBeInTheDocument();
+    cy.contains('Passwords do not match').should('be.visible');
   });
 
-  test('stepper shows correct steps', () => {
-    render(
-      <MemoryRouter>
-        <SignUpPage />
-      </MemoryRouter>
-    );
-    
-    // Check that all 3 steps are shown
-    expect(screen.getByText('Basic Info')).toBeInTheDocument();
-    expect(screen.getByText('Preferences')).toBeInTheDocument();
-    expect(screen.getByText('Photos')).toBeInTheDocument();
+  it('fetches location details when "Detect My Location" is clicked', () => {
+    cy.contains('button', 'Detect My Location').click();
+    cy.wait('@geocodingRequest');
+    cy.get('input[label="City"]').should('have.value', 'New York');
+    cy.get('input[label="Country"]').should('have.value', 'United States');
   });
 
-  test('detects and populates location fields correctly', () => {
-    render(
-      <MemoryRouter>
-        <SignUpPage />
-      </MemoryRouter>
-    );
+  it('completes the full signup flow successfully', () => {
+    // Step 1: Basic Info
+    cy.get('input[name="firstName"]').type('Test User');
+    cy.get('input[type="email"]').type('test@example.com');
+    cy.get('input[type="password"]').first().type('password123');
+    cy.get('input[type="password"]').last().type('password123');
     
-    // Mock geolocation
-    global.navigator.geolocation = {
-      getCurrentPosition: jest.fn().mockImplementation((success) =>
-        success({ coords: { latitude: 40.7128, longitude: -74.0060 } })
-      )
-    };
+    // Valid date
+    const validDate = new Date();
+    validDate.setFullYear(validDate.getFullYear() - 20);
+    const formattedDate = validDate.toISOString().split('T')[0];
+    cy.get('input[type="date"]').type(formattedDate);
     
-    // Wait for location detection to complete
-    setTimeout(() => {
-      // Verify input fields are populated
-      expect(screen.getByLabelText('City')).toHaveValue('New York');
-      expect(screen.getByLabelText('Country')).toHaveValue('United States');
-    }, 1000);
+    // Get location
+    cy.contains('button', 'Detect My Location').click();
+    cy.wait('@geocodingRequest');
+    
+    cy.contains('button', 'Next').click();
+    
+    // Step 2: About You
+    cy.get('input[value="woman"]').click();
+    cy.get('input[value="men"]').click();
+    cy.get('input[value="longTerm"]').click();
+    cy.get('input[value="Straight"]').click();
+    
+    // Add interests
+    cy.get('#interests-tags').click().type('Dancing{enter}');
+    cy.get('#interests-tags').click().type('Music{enter}');
+    
+    // Add bio
+    cy.get('textarea').type('This is my test bio for Cypress testing.');
+    
+    cy.contains('button', 'Next').click();
+    
+    // Step 3: Photos
+    // Create a mock file for upload
+    cy.fixture('sample-1.jpg', 'base64').then(fileContent => {
+      cy.get('input[type="file"]').attachFile({
+        fileContent,
+        fileName: 'sample-1.jpg',
+        mimeType: 'image/jpeg'
+      });
+    });
+    
+    cy.fixture('sample-2.jpg', 'base64').then(fileContent => {
+      cy.get('input[type="file"]').attachFile({
+        fileContent,
+        fileName: 'sample-2.jpg',
+        mimeType: 'image/jpeg'
+      });
+    });
+    
+    // Submit the form
+    cy.contains('button', 'Create Account').click();
+    cy.wait('@registerRequest');
+    
+    // Should be redirected to login page
+    cy.url().should('include', '/login');
+  });
+
+  it('validates minimum photos requirement', () => {
+    // Go through step 1 and 2
+    cy.get('input[name="firstName"]').type('Test User');
+    cy.get('input[type="email"]').type('test@example.com');
+    cy.get('input[type="password"]').first().type('password123');
+    cy.get('input[type="password"]').last().type('password123');
+    
+    const validDate = new Date();
+    validDate.setFullYear(validDate.getFullYear() - 20);
+    const formattedDate = validDate.toISOString().split('T')[0];
+    cy.get('input[type="date"]').type(formattedDate);
+    
+    cy.contains('button', 'Next').click();
+    
+    // Step 2 quick fill
+    cy.get('input[value="woman"]').click();
+    cy.get('input[value="men"]').click();
+    cy.get('input[value="longTerm"]').click();
+    cy.get('textarea').type('Test bio');
+    
+    cy.contains('button', 'Next').click();
+    
+    // Try to submit without adding photos
+    cy.contains('button', 'Create Account').click();
+    
+    // Should see an error
+    cy.contains('Please upload at least 2 photos').should('be.visible');
   });
 });
