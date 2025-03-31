@@ -668,3 +668,102 @@ func TestDeleteUserProfile(t *testing.T) {
 		})
 	}
 }
+
+func TestReportUser(t *testing.T) {
+	db := setupTestDB()
+	router := setupRouter(db)
+
+	// Register two users
+	reporter := models.User{
+		FirstName:         "Alice",
+		Email:             "alice@example.com",
+		Password:          "password123",
+		DateOfBirth:       "1990-01-01",
+		Gender:            "Female",
+		InterestedIn:      "Male",
+		LookingFor:        "Relationship",
+		Interests:         []string{"Hiking"},
+		SexualOrientation: "Straight",
+		Photos:            []string{"photo1.jpg"},
+	}
+	reporter.HashPassword(reporter.Password)
+	db.Create(&reporter)
+
+	target := models.User{
+		FirstName:         "Bob",
+		Email:             "bob@example.com",
+		Password:          "password123",
+		DateOfBirth:       "1990-01-01",
+		Gender:            "Male",
+		InterestedIn:      "Female",
+		LookingFor:        "Relationship",
+		Interests:         []string{"Reading"},
+		SexualOrientation: "Straight",
+		Photos:            []string{"photo2.jpg"},
+	}
+	target.HashPassword(target.Password)
+	db.Create(&target)
+
+	// Fetch the latest user IDs dynamically
+	var latestReporter, latestTarget models.User
+	db.Order("id desc").First(&latestReporter)
+	db.Where("email = ?", "bob@example.com").First(&latestTarget)
+	targetID := strconv.Itoa(int(latestTarget.ID))
+
+	tests := []struct {
+		name         string
+		targetID     string
+		requestBody  string
+		expectedCode int
+		expectedBody string
+	}{
+		{
+			name:         "Successful Report",
+			targetID:     targetID,
+			requestBody:  `{"reason": "Inappropriate messages"}`,
+			expectedCode: http.StatusCreated,
+			expectedBody: `{"message":"Report submitted successfully"}`,
+		},
+		{
+			name:         "Target User Not Found",
+			targetID:     "999",
+			requestBody:  `{"reason": "Spam"}`,
+			expectedCode: http.StatusNotFound,
+			expectedBody: `{"error":"Target user not found"}`,
+		},
+		{
+			name:         "Missing Reason",
+			targetID:     targetID,
+			requestBody:  `{}`,
+			expectedCode: http.StatusBadRequest,
+			expectedBody: `{"error":"Reason is required"}`,
+		},
+		{
+			name:         "Report Self",
+			targetID:     strconv.Itoa(int(latestReporter.ID)),
+			requestBody:  `{"reason": "Testing"}`,
+			expectedCode: http.StatusBadRequest,
+			expectedBody: `{"error":"You cannot report yourself"}`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			body := bytes.NewBufferString(tt.requestBody)
+			req, _ := http.NewRequest("POST", "/report/"+tt.targetID, body)
+			req.Header.Set("Content-Type", "application/json")
+			w := httptest.NewRecorder()
+			router.ServeHTTP(w, req)
+
+			assert.Equal(t, tt.expectedCode, w.Code)
+			assert.Contains(t, w.Body.String(), tt.expectedBody)
+
+			result := TestResult{
+				TestName: tt.name,
+				Status:   http.StatusText(w.Code),
+				Response: w.Body.String(),
+			}
+			writeTestResult("/report/:target_id", result)
+		})
+	}
+}
