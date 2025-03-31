@@ -158,6 +158,52 @@ info:
   version: "1.0"
 paths:
   /block/{target_id}:
+    delete:
+      description: Removes a target user from the authenticated user's blocked list
+      parameters:
+      - description: Target User ID
+        in: path
+        name: target_id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Unblock a user
+      tags:
+      - matchmaking
     post:
       consumes:
       - application/json
