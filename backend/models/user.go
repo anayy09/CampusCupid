@@ -133,3 +133,17 @@ func (u *User) HashPassword(password string) error {
 func (u *User) CheckPassword(password string) error {
 	return bcrypt.CompareHashAndPassword([]byte(u.Password), []byte(password))
 }
+
+// Report represents a user report for inappropriate behavior
+type Report struct {
+	ID         uint      `gorm:"primaryKey" json:"id"`
+	CreatedAt  time.Time `json:"createdAt"`
+	ReporterID uint      `gorm:"not null" json:"reporterId"`       // The user submitting the report
+	TargetID   uint      `gorm:"not null" json:"targetId"`         // The user being reported
+	Reason     string    `gorm:"type:text;not null" json:"reason"` // Why the report was made
+}
+
+// ReportRequest defines the structure for a report submission
+type ReportRequest struct {
+	Reason string `json:"reason" binding:"required"` // Required field for the report reason
+}

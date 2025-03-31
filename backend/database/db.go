@@ -108,7 +108,8 @@ func Connect() {
 
 	// Auto-migrate models to ensure schema is up-to-date
 	// Migrates User (with new geolocation fields) and Interaction tables
-	if err := DB.AutoMigrate(&models.User{}, &models.Interaction{}); err != nil {
+	// Auto-migrate models to ensure schema is up-to-date
+	if err := DB.AutoMigrate(&models.User{}, &models.Interaction{}, &models.Message{}, &models.Report{}); err != nil {
 		panic("Failed to auto-migrate database")
 	}
 
