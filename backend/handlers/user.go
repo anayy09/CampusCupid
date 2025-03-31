@@ -3,6 +3,7 @@ package handlers
 import (
 	"datingapp/database"
 	"datingapp/models"
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -11,6 +12,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	validator "github.com/go-playground/validator/v10"
 	"github.com/golang-jwt/jwt/v5"
 )
 
@@ -954,4 +956,76 @@ func DeleteUserProfile(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Profile deleted successfully"})
+}
+
+// ReportUser allows a user to report another user for inappropriate behavior
+// @Summary Report a user
+// @Description Submits a report against a target user with a reason
+// @Tags matchmaking
+// @Accept json
+// @Produce json
+// @Param target_id path uint true "Target User ID"
+// @Param report body models.ReportRequest true "Report details"
+// @Security ApiKeyAuth
+// @Success 201 {object} map[string]string
+// @Failure 400 {object} map[string]string
+// @Failure 401 {object} map[string]string
+// @Failure 404 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /report/{target_id} [post]
+func ReportUser(c *gin.Context) {
+	targetID := c.Param("target_id")
+
+	// Get the authenticated user's ID from the context
+	authenticatedUserID, exists := c.Get("userID")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Authentication required"})
+		return
+	}
+
+	// Convert the target ID to uint
+	targetUserID, err := strconv.ParseUint(targetID, 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid target user ID"})
+		return
+	}
+
+	// Prevent users from reporting themselves
+	if uint(targetUserID) == authenticatedUserID.(uint) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "You cannot report yourself"})
+		return
+	}
+
+	// Bind and validate the report request
+	var reportReq models.ReportRequest
+	if err := c.ShouldBindJSON(&reportReq); err != nil {
+		var validationErrs validator.ValidationErrors
+		if errors.As(err, &validationErrs) {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Reason is required"})
+			return
+		}
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request format"})
+		return
+	}
+
+	// Check if the target user exists
+	var targetUser models.User
+	if err := database.DB.Where("id = ?", targetUserID).First(&targetUser).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Target user not found"})
+		return
+	}
+
+	// Create the report
+	report := models.Report{
+		ReporterID: authenticatedUserID.(uint),
+		TargetID:   uint(targetUserID),
+		Reason:     reportReq.Reason,
+	}
+
+	if err := database.DB.Create(&report).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to submit report"})
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{"message": "Report submitted successfully"})
 }
