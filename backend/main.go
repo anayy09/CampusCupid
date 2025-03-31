@@ -79,6 +79,8 @@ func main() {
 	r.POST("/report/:target_id", middleware.AuthMiddleware(), handlers.ReportUser) // New route
 	// Block user
 	r.POST("/block/:target_id", middleware.AuthMiddleware(), handlers.BlockUser) // New route
+	// unblock user
+	r.DELETE("/block/:target_id", middleware.AuthMiddleware(), handlers.UnblockUser) // New route
 
 	// MESSAGING APIS
 	// Send a message to another user
