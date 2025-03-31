@@ -61,12 +61,14 @@ function DashboardPage() {
     const fetchUserProfile = async () => {
       try {
         const token = localStorage.getItem('token');
-        if (!token) {
+        const userId = localStorage.getItem('userId');
+        
+        if (!token || !userId) {
           navigate('/login');
           return;
         }
 
-        const response = await axios.get(`${API_URL}/profile/me`, {
+        const response = await axios.get(`${API_URL}/profile/${userId}`, {
           headers: { Authorization: `Bearer ${token}` }
         });
 
@@ -77,6 +79,9 @@ function DashboardPage() {
         setError('Failed to load profile');
         setOpenSnackbar(true);
         setLoading(false);
+        if (err.response?.status === 401) {
+          navigate('/login');
+        }
       }
     };
 
@@ -86,6 +91,7 @@ function DashboardPage() {
   const handleLogout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
+    localStorage.removeItem('userId');
     navigate('/login');
   };
 
@@ -148,13 +154,27 @@ function DashboardPage() {
                   border: '4px solid #FE3C72'
                 }}
               />
+              {user?.photos && user.photos.length > 0 && (
+                <Box sx={{ mt: 2, textAlign: 'center' }}>
+                  <Typography variant="body2" color="textSecondary">
+                    Additional Photos: {user.photos.length}
+                  </Typography>
+                </Box>
+              )}
             </Grid>
             <Grid item xs={12} md={8}>
               <Typography variant="h5" gutterBottom>
-                {user?.firstName} {user?.lastName}, {calculateAge(user?.dateOfBirth)}
+                {user?.firstName}, {calculateAge(user?.dateOfBirth)}
               </Typography>
               <Typography variant="body1" color="textSecondary" paragraph>
                 {user?.bio || 'No bio available'}
+              </Typography>
+              <Typography variant="body2" color="textSecondary">
+                Looking for: {user?.lookingFor || 'Not specified'}
+                <br />
+                Interested in: {user?.interestedIn || 'Not specified'}
+                <br />
+                Sexual Orientation: {user?.sexualOrientation || 'Not specified'}
               </Typography>
               <Box sx={{ display: 'flex', gap: 2, mt: 2 }}>
                 <Button 
@@ -182,7 +202,11 @@ function DashboardPage() {
                     <br />
                     Gender: {user?.gender}
                     <br />
-                    University: {user?.university}
+                    Gender Preference: {user?.genderPreference}
+                    <br />
+                    Age Range: {user?.ageRange}
+                    <br />
+                    Distance: {user?.distance ? `${user.distance} miles` : 'Not set'}
                   </Typography>
                 </CardContent>
               </Card>

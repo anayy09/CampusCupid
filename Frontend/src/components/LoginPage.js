@@ -130,17 +130,17 @@ function LoginPage() {
       // Handle successful login
       console.log('Login successful:', response.data);
       
-      // Store token in localStorage for authentication
+      // Store token and user data in localStorage for authentication
       if (response.data.token) {
         localStorage.setItem('token', response.data.token);
-        localStorage.setItem('user', JSON.stringify(response.data.user || {}));
+        localStorage.setItem('userId', response.data.user_id.toString()); // Updated to use user_id
         
         // Set authorization header for future requests
         axios.defaults.headers.common['Authorization'] = `Bearer ${response.data.token}`;
+        
+        setLoading(false);
+        navigate('/dashboard');
       }
-      
-      setLoading(false);
-      navigate('/dashboard'); // Redirect to dashboard after successful login
     } catch (err) {
       setLoading(false);
       console.error('Login error:', err);
