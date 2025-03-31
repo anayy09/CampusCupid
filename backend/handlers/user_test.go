@@ -604,3 +604,67 @@ func TestGetMatches(t *testing.T) {
 		})
 	}
 }
+
+func TestDeleteUserProfile(t *testing.T) {
+	db := setupTestDB()
+	router := setupRouter(db)
+
+	// Register a user first
+	user := models.User{
+		FirstName:         "John",
+		Email:             "john@example.com",
+		Password:          "password123",
+		DateOfBirth:       "1990-01-01",
+		Gender:            "Male",
+		InterestedIn:      "Female",
+		LookingFor:        "Relationship",
+		Interests:         []string{"Hiking", "Reading"},
+		SexualOrientation: "Straight",
+		Photos:            []string{"photo1.jpg", "photo2.jpg"},
+	}
+	user.HashPassword(user.Password)
+	db.Create(&user)
+
+	// Fetch the latest user ID dynamically
+	var latestUser models.User
+	db.Order("id desc").First(&latestUser)
+	userID := strconv.Itoa(int(latestUser.ID))
+
+	tests := []struct {
+		name         string
+		userID       string
+		expectedCode int
+		expectedBody string
+	}{
+		{
+			name:         "Successful Profile Deletion",
+			userID:       userID,
+			expectedCode: http.StatusOK,
+			expectedBody: `{"message":"Profile deleted successfully"}`,
+		},
+		{
+			name:         "User Not Found",
+			userID:       "999",
+			expectedCode: http.StatusNotFound,
+			expectedBody: `{"error":"User not found"}`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req, _ := http.NewRequest("DELETE", "/profile/"+tt.userID, nil)
+			w := httptest.NewRecorder()
+			router.ServeHTTP(w, req)
+
+			assert.Equal(t, tt.expectedCode, w.Code)
+			assert.Contains(t, w.Body.String(), tt.expectedBody)
+
+			result := TestResult{
+				TestName: tt.name,
+				Status:   http.StatusText(w.Code),
+				Response: w.Body.String(),
+			}
+			writeTestResult("/profile/:user_id", result)
+		})
+	}
+}
