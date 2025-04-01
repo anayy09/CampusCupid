@@ -41,12 +41,13 @@ func setupTestDB() *gorm.DB {
 	}
 
 	// Clear tables for clean test environment
+	db.Exec("DROP TABLE IF EXISTS messages")
 	db.Exec("DROP TABLE IF EXISTS interactions")
 	db.Exec("DROP TABLE IF EXISTS reports")
 	db.Exec("DROP TABLE IF EXISTS users")
 
 	// Migrate models
-	db.AutoMigrate(&models.User{}, &models.Interaction{}, &models.Report{})
+	db.AutoMigrate(&models.User{}, &models.Interaction{}, &models.Report{}, &models.Message{})
 	return db
 }
 
@@ -63,14 +64,24 @@ func setupRouter(db *gorm.DB) *gin.Engine {
 	authorized := r.Group("/")
 	authorized.Use(middleware.AuthMiddleware())
 	{
+		// Profile routes
 		authorized.GET("/profile/:user_id", GetUserProfile)
 		authorized.PUT("/profile/:user_id", UpdateUserProfile)
 		authorized.DELETE("/profile/:user_id", DeleteUserProfile)
 		authorized.PUT("/preferences/:user_id", UpdateUserPreferences)
+
+		// Matchmaking routes
 		authorized.GET("/matches/:user_id", GetMatches)
+		authorized.POST("/like/:target_id", LikeUser)
+		authorized.POST("/dislike/:target_id", DislikeUser)
 		authorized.POST("/report/:target_id", ReportUser)
 		authorized.POST("/block/:target_id", BlockUser)
 		authorized.DELETE("/block/:target_id", UnblockUser)
+
+		// Messaging routes
+		authorized.POST("/messages", SendMessage)
+		authorized.GET("/messages/:user_id", GetMessages)
+		authorized.GET("/conversations", GetConversations)
 	}
 
 	return r
@@ -1014,6 +1025,597 @@ func TestUnblockUser(t *testing.T) {
 				updatedBlocker.BlockedUsers = []uint{} // Clear blocked list
 				db.Save(&updatedBlocker)
 			}
+		})
+	}
+}
+
+func TestLikeUser(t *testing.T) {
+	db := setupTestDB()
+	router := setupRouter(db)
+
+	// Register two users
+	user1 := models.User{
+		FirstName:         "Alice",
+		Email:             "alice@example.com",
+		Password:          "password123",
+		DateOfBirth:       "1990-01-01",
+		Gender:            "Female",
+		InterestedIn:      "Male",
+		LookingFor:        "Relationship",
+		Interests:         []string{"Hiking"},
+		SexualOrientation: "Straight",
+		Photos:            []string{"photo1.jpg"},
+	}
+	user1.HashPassword(user1.Password)
+	db.Create(&user1)
+
+	user2 := models.User{
+		FirstName:         "Bob",
+		Email:             "bob@example.com",
+		Password:          "password123",
+		DateOfBirth:       "1990-01-01",
+		Gender:            "Male",
+		InterestedIn:      "Female",
+		LookingFor:        "Relationship",
+		Interests:         []string{"Reading"},
+		SexualOrientation: "Straight",
+		Photos:            []string{"photo2.jpg"},
+	}
+	user2.HashPassword(user2.Password)
+	db.Create(&user2)
+
+	tests := []struct {
+		name         string
+		targetID     string
+		authUserID   uint
+		expectedCode int
+		expectedBody map[string]interface{}
+	}{
+		{
+			name:         "Successful Like",
+			targetID:     strconv.Itoa(int(user2.ID)),
+			authUserID:   user1.ID,
+			expectedCode: http.StatusOK,
+			expectedBody: map[string]interface{}{
+				"success": true,
+				"liked":   true,
+				"matched": false,
+			},
+		},
+		{
+			name:         "Target User Not Found",
+			targetID:     "999",
+			authUserID:   user1.ID,
+			expectedCode: http.StatusNotFound,
+			expectedBody: map[string]interface{}{
+				"error": "Target user not found",
+			},
+		},
+		{
+			name:         "Already Interacted",
+			targetID:     strconv.Itoa(int(user2.ID)),
+			authUserID:   user1.ID,
+			expectedCode: http.StatusBadRequest,
+			expectedBody: map[string]interface{}{
+				"error": "You have already interacted with this user",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req, _ := http.NewRequest("POST", "/like/"+tt.targetID, nil)
+			addAuthHeader(req, tt.authUserID)
+			req.Header.Set("Content-Type", "application/json")
+
+			w := httptest.NewRecorder()
+			router.ServeHTTP(w, req)
+
+			assert.Equal(t, tt.expectedCode, w.Code)
+
+			// Parse response body
+			var response map[string]interface{}
+			err := json.Unmarshal(w.Body.Bytes(), &response)
+			assert.NoError(t, err)
+			assert.Equal(t, tt.expectedBody, response)
+
+			result := TestResult{
+				TestName: tt.name,
+				Status:   http.StatusText(w.Code),
+				Response: w.Body.String(),
+			}
+			writeTestResult("/like/:target_id", result)
+		})
+	}
+}
+
+func TestDislikeUser(t *testing.T) {
+	db := setupTestDB()
+	router := setupRouter(db)
+
+	// Register two users
+	user1 := models.User{
+		FirstName:         "Alice",
+		Email:             "alice@example.com",
+		Password:          "password123",
+		DateOfBirth:       "1990-01-01",
+		Gender:            "Female",
+		InterestedIn:      "Male",
+		LookingFor:        "Relationship",
+		Interests:         []string{"Hiking"},
+		SexualOrientation: "Straight",
+		Photos:            []string{"photo1.jpg"},
+	}
+	user1.HashPassword(user1.Password)
+	db.Create(&user1)
+
+	user2 := models.User{
+		FirstName:         "Bob",
+		Email:             "bob@example.com",
+		Password:          "password123",
+		DateOfBirth:       "1990-01-01",
+		Gender:            "Male",
+		InterestedIn:      "Female",
+		LookingFor:        "Relationship",
+		Interests:         []string{"Reading"},
+		SexualOrientation: "Straight",
+		Photos:            []string{"photo2.jpg"},
+	}
+	user2.HashPassword(user2.Password)
+	db.Create(&user2)
+
+	tests := []struct {
+		name         string
+		targetID     string
+		authUserID   uint
+		expectedCode int
+		expectedBody map[string]interface{}
+	}{
+		{
+			name:         "Successful Dislike",
+			targetID:     strconv.Itoa(int(user2.ID)),
+			authUserID:   user1.ID,
+			expectedCode: http.StatusOK,
+			expectedBody: map[string]interface{}{
+				"success": true,
+				"liked":   false,
+				"matched": false,
+			},
+		},
+		{
+			name:         "Target User Not Found",
+			targetID:     "999",
+			authUserID:   user1.ID,
+			expectedCode: http.StatusNotFound,
+			expectedBody: map[string]interface{}{
+				"error": "Target user not found",
+			},
+		},
+		{
+			name:         "Already Interacted",
+			targetID:     strconv.Itoa(int(user2.ID)),
+			authUserID:   user1.ID,
+			expectedCode: http.StatusBadRequest,
+			expectedBody: map[string]interface{}{
+				"error": "You have already interacted with this user",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req, _ := http.NewRequest("POST", "/dislike/"+tt.targetID, nil)
+			addAuthHeader(req, tt.authUserID)
+			req.Header.Set("Content-Type", "application/json")
+
+			w := httptest.NewRecorder()
+			router.ServeHTTP(w, req)
+
+			assert.Equal(t, tt.expectedCode, w.Code)
+
+			// Parse response body
+			var response map[string]interface{}
+			err := json.Unmarshal(w.Body.Bytes(), &response)
+			assert.NoError(t, err)
+			assert.Equal(t, tt.expectedBody, response)
+
+			result := TestResult{
+				TestName: tt.name,
+				Status:   http.StatusText(w.Code),
+				Response: w.Body.String(),
+			}
+			writeTestResult("/dislike/:target_id", result)
+		})
+	}
+}
+
+func TestSendMessage(t *testing.T) {
+	db := setupTestDB()
+	router := setupRouter(db)
+
+	// Register users for testing
+	sender := models.User{
+		FirstName:         "Alice",
+		Email:             "alice@example.com",
+		Password:          "password123",
+		DateOfBirth:       "1990-01-01",
+		Gender:            "Female",
+		InterestedIn:      "Male",
+		LookingFor:        "Relationship",
+		Interests:         []string{"Hiking"},
+		SexualOrientation: "Straight",
+		Photos:            []string{"photo1.jpg"},
+	}
+	sender.HashPassword(sender.Password)
+	db.Create(&sender)
+
+	receiver := models.User{
+		FirstName:         "Bob",
+		Email:             "bob@example.com",
+		Password:          "password123",
+		DateOfBirth:       "1990-01-01",
+		Gender:            "Male",
+		InterestedIn:      "Female",
+		LookingFor:        "Relationship",
+		Interests:         []string{"Reading"},
+		SexualOrientation: "Straight",
+		Photos:            []string{"photo2.jpg"},
+	}
+	receiver.HashPassword(receiver.Password)
+	db.Create(&receiver)
+
+	// Create a third user that exists but isn't matched
+	user3 := models.User{
+		FirstName:         "Charlie",
+		Email:             "charlie@example.com",
+		Password:          "password123",
+		DateOfBirth:       "1990-01-01",
+		Gender:            "Male",
+		InterestedIn:      "Female",
+		LookingFor:        "Relationship",
+		Interests:         []string{"Gaming"},
+		SexualOrientation: "Straight",
+		Photos:            []string{"photo3.jpg"},
+	}
+	user3.HashPassword(user3.Password)
+	db.Create(&user3)
+
+	// Create mutual match between sender and receiver
+	interaction1 := models.Interaction{
+		UserID:    sender.ID,
+		TargetID:  receiver.ID,
+		Liked:     true,
+		Matched:   true,
+		CreatedAt: time.Now(),
+	}
+	db.Create(&interaction1)
+
+	interaction2 := models.Interaction{
+		UserID:    receiver.ID,
+		TargetID:  sender.ID,
+		Liked:     true,
+		Matched:   true,
+		CreatedAt: time.Now(),
+	}
+	db.Create(&interaction2)
+
+	// Create some test messages
+	message1 := models.Message{
+		SenderID:   sender.ID,
+		ReceiverID: receiver.ID,
+		Content:    "Hello!",
+		Read:       false,
+		CreatedAt:  time.Now(),
+	}
+	db.Create(&message1)
+
+	message2 := models.Message{
+		SenderID:   receiver.ID,
+		ReceiverID: sender.ID,
+		Content:    "Hi there!",
+		Read:       false,
+		CreatedAt:  time.Now(),
+	}
+	db.Create(&message2)
+
+	tests := []struct {
+		name         string
+		authUserID   uint
+		payload      models.SendMessageRequest
+		expectedCode int
+		expectedBody string
+	}{
+		{
+			name:       "Successful Message Send",
+			authUserID: sender.ID,
+			payload: models.SendMessageRequest{
+				ReceiverID: receiver.ID,
+				Content:    "Hello!",
+			},
+			expectedCode: http.StatusCreated,
+			expectedBody: `"content":"Hello!"`,
+		},
+		{
+			name:       "Receiver Not Found",
+			authUserID: sender.ID,
+			payload: models.SendMessageRequest{
+				ReceiverID: 999,
+				Content:    "Hello!",
+			},
+			expectedCode: http.StatusNotFound,
+			expectedBody: `{"error":"Receiver not found"}`,
+		},
+		{
+			name:       "Not Matched",
+			authUserID: sender.ID,
+			payload: models.SendMessageRequest{
+				ReceiverID: user3.ID,
+				Content:    "Hello!",
+			},
+			expectedCode: http.StatusForbidden,
+			expectedBody: `{"error":"You can only send messages to users you have matched with"}`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			payloadBytes, _ := json.Marshal(tt.payload)
+			req, _ := http.NewRequest("POST", "/messages", bytes.NewBuffer(payloadBytes))
+			addAuthHeader(req, tt.authUserID)
+			req.Header.Set("Content-Type", "application/json")
+
+			w := httptest.NewRecorder()
+			router.ServeHTTP(w, req)
+
+			assert.Equal(t, tt.expectedCode, w.Code)
+			assert.Contains(t, w.Body.String(), tt.expectedBody)
+
+			result := TestResult{
+				TestName: tt.name,
+				Status:   http.StatusText(w.Code),
+				Response: w.Body.String(),
+			}
+			writeTestResult("/messages", result)
+		})
+	}
+}
+
+func TestGetMessages(t *testing.T) {
+	db := setupTestDB()
+	router := setupRouter(db)
+
+	// Register two users and create a match between them
+	user1 := models.User{
+		FirstName:         "Alice",
+		Email:             "alice@example.com",
+		Password:          "password123",
+		DateOfBirth:       "1990-01-01",
+		Gender:            "Female",
+		InterestedIn:      "Male",
+		LookingFor:        "Relationship",
+		Interests:         []string{"Hiking"},
+		SexualOrientation: "Straight",
+		Photos:            []string{"photo1.jpg"},
+	}
+	user1.HashPassword(user1.Password)
+	db.Create(&user1)
+
+	user2 := models.User{
+		FirstName:         "Bob",
+		Email:             "bob@example.com",
+		Password:          "password123",
+		DateOfBirth:       "1990-01-01",
+		Gender:            "Male",
+		InterestedIn:      "Female",
+		LookingFor:        "Relationship",
+		Interests:         []string{"Reading"},
+		SexualOrientation: "Straight",
+		Photos:            []string{"photo2.jpg"},
+	}
+	user2.HashPassword(user2.Password)
+	db.Create(&user2)
+
+	// Create mutual match
+	interaction1 := models.Interaction{
+		UserID:    user1.ID,
+		TargetID:  user2.ID,
+		Liked:     true,
+		Matched:   true,
+		CreatedAt: time.Now(),
+	}
+	db.Create(&interaction1)
+
+	interaction2 := models.Interaction{
+		UserID:    user2.ID,
+		TargetID:  user1.ID,
+		Liked:     true,
+		Matched:   true,
+		CreatedAt: time.Now(),
+	}
+	db.Create(&interaction2)
+
+	// Create some test messages
+	message1 := models.Message{
+		SenderID:   user1.ID,
+		ReceiverID: user2.ID,
+		Content:    "Hello!",
+		Read:       false,
+		CreatedAt:  time.Now(),
+	}
+	db.Create(&message1)
+
+	message2 := models.Message{
+		SenderID:   user2.ID,
+		ReceiverID: user1.ID,
+		Content:    "Hi there!",
+		Read:       false,
+		CreatedAt:  time.Now(),
+	}
+	db.Create(&message2)
+
+	tests := []struct {
+		name         string
+		userID       string
+		authUserID   uint
+		expectedCode int
+		expectedBody string
+	}{
+		{
+			name:         "Successful Messages Retrieval",
+			userID:       strconv.Itoa(int(user2.ID)),
+			authUserID:   user1.ID,
+			expectedCode: http.StatusOK,
+			expectedBody: `"content":"Hello!"`,
+		},
+		{
+			name:         "User Not Found",
+			userID:       "invalid", // Changed from "999" to "invalid"
+			authUserID:   user1.ID,
+			expectedCode: http.StatusBadRequest,
+			expectedBody: `{"error":"Invalid user ID"}`,
+		},
+		{
+			name:         "Not Matched",
+			userID:       "3", // A user that exists but not matched
+			authUserID:   user1.ID,
+			expectedCode: http.StatusForbidden,
+			expectedBody: `{"error":"You can only view messages with users you have matched with"}`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req, _ := http.NewRequest("GET", "/messages/"+tt.userID, nil)
+			addAuthHeader(req, tt.authUserID)
+			req.Header.Set("Content-Type", "application/json")
+
+			w := httptest.NewRecorder()
+			router.ServeHTTP(w, req)
+
+			assert.Equal(t, tt.expectedCode, w.Code)
+			assert.Contains(t, w.Body.String(), tt.expectedBody)
+
+			result := TestResult{
+				TestName: tt.name,
+				Status:   http.StatusText(w.Code),
+				Response: w.Body.String(),
+			}
+			writeTestResult("/messages/:user_id", result)
+		})
+	}
+}
+
+func TestGetConversations(t *testing.T) {
+	db := setupTestDB()
+	router := setupRouter(db)
+
+	// Register two users and create a match between them
+	user1 := models.User{
+		FirstName:         "Alice",
+		Email:             "alice@example.com",
+		Password:          "password123",
+		DateOfBirth:       "1990-01-01",
+		Gender:            "Female",
+		InterestedIn:      "Male",
+		LookingFor:        "Relationship",
+		Interests:         []string{"Hiking"},
+		SexualOrientation: "Straight",
+		Photos:            []string{"photo1.jpg"},
+	}
+	user1.HashPassword(user1.Password)
+	db.Create(&user1)
+
+	user2 := models.User{
+		FirstName:         "Bob",
+		Email:             "bob@example.com",
+		Password:          "password123",
+		DateOfBirth:       "1990-01-01",
+		Gender:            "Male",
+		InterestedIn:      "Female",
+		LookingFor:        "Relationship",
+		Interests:         []string{"Reading"},
+		SexualOrientation: "Straight",
+		Photos:            []string{"photo2.jpg"},
+	}
+	user2.HashPassword(user2.Password)
+	db.Create(&user2)
+
+	// Create mutual match
+	interaction1 := models.Interaction{
+		UserID:    user1.ID,
+		TargetID:  user2.ID,
+		Liked:     true,
+		Matched:   true,
+		CreatedAt: time.Now(),
+	}
+	db.Create(&interaction1)
+
+	interaction2 := models.Interaction{
+		UserID:    user2.ID,
+		TargetID:  user1.ID,
+		Liked:     true,
+		Matched:   true,
+		CreatedAt: time.Now(),
+	}
+	db.Create(&interaction2)
+
+	// Create some test messages
+	message1 := models.Message{
+		SenderID:   user1.ID,
+		ReceiverID: user2.ID,
+		Content:    "Hello!",
+		Read:       false,
+		CreatedAt:  time.Now(),
+	}
+	db.Create(&message1)
+
+	message2 := models.Message{
+		SenderID:   user2.ID,
+		ReceiverID: user1.ID,
+		Content:    "Hi there!",
+		Read:       false,
+		CreatedAt:  time.Now(),
+	}
+	db.Create(&message2)
+
+	tests := []struct {
+		name         string
+		authUserID   uint
+		expectedCode int
+		expectedBody string
+	}{
+		{
+			name:         "Successful Conversations Retrieval",
+			authUserID:   user1.ID,
+			expectedCode: http.StatusOK,
+			expectedBody: `"firstName":"Bob"`,
+		},
+		{
+			name:         "No Conversations",
+			authUserID:   999,
+			expectedCode: http.StatusOK,
+			expectedBody: `[]`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req, _ := http.NewRequest("GET", "/conversations", nil)
+			addAuthHeader(req, tt.authUserID)
+			req.Header.Set("Content-Type", "application/json")
+
+			w := httptest.NewRecorder()
+			router.ServeHTTP(w, req)
+
+			assert.Equal(t, tt.expectedCode, w.Code)
+			assert.Contains(t, w.Body.String(), tt.expectedBody)
+
+			result := TestResult{
+				TestName: tt.name,
+				Status:   http.StatusText(w.Code),
+				Response: w.Body.String(),
+			}
+			writeTestResult("/conversations", result)
 		})
 	}
 }
