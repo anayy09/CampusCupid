@@ -1,18 +1,22 @@
 # Sprint 3 Documentation
 
 ## Group Members:
+
 Abhijeet Mallick (33790822), Rijul Bir Singh (97518637), Anay Sinhal (68789243), Ethan Klasky (19334894)
 
 ## Demonstration Videos
+
 - **Frontend**: [[Link]](https://youtu.be/qeAtmb9m-rE)
-- **Backend**: [Link]
+- **Backend**: [[Link]](https://youtu.be/qAOF1oxO6Js)
 
 ## Work Completed in Sprint 3
 
 ### Frontend
+
 #### Completed Tasks
 
 ##### Location Handling
+
 - **Geolocation API Integration**
   - Uses the browser's Geolocation API (`navigator.geolocation.getCurrentPosition`) to obtain latitude and longitude.
 - **Reverse Geocoding**
@@ -25,6 +29,7 @@ Abhijeet Mallick (33790822), Rijul Bir Singh (97518637), Anay Sinhal (68789243),
   - Displays alerts/modals for denied location access, allowing users to manually enter their city/region.
 
 ##### Dashboard Page (After Signup)
+
 - **State Management & API Integration**
   - Fetches user profile data from an authenticated API request.
   - Stores user details in React state (`useState`) and updates dynamically.
@@ -42,6 +47,7 @@ Abhijeet Mallick (33790822), Rijul Bir Singh (97518637), Anay Sinhal (68789243),
   - Uses state-based visibility toggling to show success/error messages dynamically.
 
 ##### Matcher Page
+
 - **User Matching Algorithm**
   - Retrieves other user profiles from the backend via an API request.
   - Implements matching criteria based on location, age, gender preference, and interests.
@@ -60,9 +66,11 @@ Abhijeet Mallick (33790822), Rijul Bir Singh (97518637), Anay Sinhal (68789243),
   - Optimizes API requests with debouncing (`lodash.debounce`) to prevent excessive calls.
 
 ### Backend
+
 #### Completed Tasks
 
 ##### Matchmaking Functionality
+
 - **Matchmaking APIs**
   - Get Matches: Retrieves potential matches for a user based on preferences like location, age range, gender, and interests.
   - Like User: Allows a user to like another user. If both users like each other, a match is created.
@@ -75,6 +83,7 @@ Abhijeet Mallick (33790822), Rijul Bir Singh (97518637), Anay Sinhal (68789243),
   - Implements logic to notify users of mutual matches instantly.
 
 ##### Messaging Functionality
+
 - **Messaging APIs**
   - Send Message: Allows users to send messages to matched users.
   - Get Messages: Retrieves the conversation between two matched users.
@@ -86,6 +95,7 @@ Abhijeet Mallick (33790822), Rijul Bir Singh (97518637), Anay Sinhal (68789243),
 ## Frontend Unit Tests
 
 1. **Landing Page Tests**
+
    - File: `cypress/e2e/landing-page.cy.js`
    - Implemented Test Cases:
      - Title and Subtitle Validation: Ensures the correct title (Campus Cupid) and subtitle (Join millions of people connecting through love) are displayed.
@@ -94,8 +104,8 @@ Abhijeet Mallick (33790822), Rijul Bir Singh (97518637), Anay Sinhal (68789243),
        - Clicking the Login button navigates to the `/login` page.
        - Clicking the Sign Up Now button navigates to the `/signup` page.
      - Call to Action Section: Ensures "LOVE STARTS HERE" is visible.
-
 2. **Sign-Up Page Tests**
+
    - File: `cypress/e2e/signup-page.cy.js`
    - Implemented Test Cases:
      - Stepper Validation: Ensures all steps (Basic Info, About You, Photos) are present.
@@ -114,32 +124,33 @@ Abhijeet Mallick (33790822), Rijul Bir Singh (97518637), Anay Sinhal (68789243),
 ### Matchmaking APIs Tests
 
 1. **Get Matches** (`/matches/:user_id`)
+
    - **Successful Matches Retrieval**: Verifies that potential matches are correctly returned based on user preferences including age range, gender, and location.
    - **User Not Found**: Confirms appropriate error response when requesting matches for a non-existent user.
    - **Invalid User ID**: Tests error handling when an invalid user ID format is provided.
    - **Empty Results**: Validates behavior when no potential matches exist based on user preferences.
-
 2. **Like User** (`/like/:target_id`)
+
    - **Successful Like**: Ensures a user can successfully like another user and the interaction is recorded.
    - **Match Creation**: Verifies that when two users like each other, a match is correctly created.
    - **Target User Not Found**: Tests error handling when attempting to like a non-existent user.
    - **Already Interacted**: Confirms appropriate error when a user attempts to like someone they've already interacted with.
    - **Self-Like Prevention**: Validates that users cannot like themselves.
-
 3. **Dislike User** (`/dislike/:target_id`)
+
    - **Successful Dislike**: Ensures a user can successfully dislike another user.
    - **Target User Not Found**: Tests error handling when attempting to dislike a non-existent user.
    - **Already Interacted**: Confirms appropriate error when a user attempts to dislike someone they've already interacted with.
    - **Self-Dislike Prevention**: Validates that users cannot dislike themselves.
-
 4. **Report User** (`/report/:target_id`)
+
    - **Successful Report**: Verifies that a user can successfully report another user with a valid reason.
    - **Missing Reason**: Tests validation that requires a reason when reporting a user.
    - **Target User Not Found**: Confirms error handling when reporting a non-existent user.
    - **Self-Report Prevention**: Validates that users cannot report themselves.
    - **Report Length Validation**: Tests minimum and maximum length requirements for report reasons.
-
 5. **Block/Unblock User** (`/block/:target_id`)
+
    - **Successful Block**: Ensures a user can successfully block another user.
    - **Successful Unblock**: Verifies that a user can unblock a previously blocked user.
    - **Target User Not Found**: Tests error handling when blocking/unblocking a non-existent user.
@@ -150,20 +161,21 @@ Abhijeet Mallick (33790822), Rijul Bir Singh (97518637), Anay Sinhal (68789243),
 ### Messaging APIs Tests
 
 1. **Send Message** (`/messages`)
+
    - **Successful Message Send**: Verifies that a user can successfully send a message to a matched user.
    - **Receiver Not Found**: Tests error handling when sending a message to a non-existent user.
    - **Not Matched**: Confirms that users can only send messages to users they've matched with.
    - **Empty Message**: Validates that empty messages are rejected.
    - **Message Length**: Tests maximum message length constraints.
-
 2. **Get Messages** (`/messages/:user_id`)
+
    - **Successful Messages Retrieval**: Ensures that conversation history between two matched users is correctly returned.
    - **User Not Found**: Tests error handling when requesting messages with a non-existent user.
    - **Not Matched**: Confirms that users can only view messages with users they've matched with.
    - **Pagination**: Verifies that messages are correctly paginated when the conversation is long.
    - **Message Ordering**: Tests that messages are returned in the correct chronological order.
-
 3. **Get Conversations** (`/conversations`)
+
    - **Successful Conversations Retrieval**: Verifies that all conversations for a user are correctly returned.
    - **No Conversations**: Tests the response when a user has no conversations.
    - **Unread Count**: Validates that the unread message count is correctly calculated.
@@ -173,33 +185,34 @@ Abhijeet Mallick (33790822), Rijul Bir Singh (97518637), Anay Sinhal (68789243),
 ### User Profile APIs Tests
 
 1. **Register** (`/register`)
+
    - **Successful Registration**: Verifies that a new user can be successfully registered with valid information.
    - **Duplicate Email**: Tests error handling when attempting to register with an email that's already in use.
    - **Invalid Request (Missing Required Fields)**: Confirms validation errors when required fields are missing.
    - **Password Strength**: Tests password strength requirements (minimum length, complexity).
    - **Age Validation**: Verifies that users must be at least 18 years old to register.
    - **Photo Requirements**: Tests minimum and maximum photo upload requirements.
-
 2. **Login** (`/login`)
+
    - **Successful Login**: Ensures a user can successfully log in with valid credentials.
    - **Invalid Credentials (Wrong Password)**: Tests error handling when an incorrect password is provided.
    - **Invalid Credentials (Non-Existent Email)**: Confirms appropriate error when attempting to log in with an email that doesn't exist.
    - **Token Generation**: Verifies that a valid JWT token is generated upon successful login.
    - **Token Expiration**: Tests that the generated token has the correct expiration time.
-
 3. **Get Profile** (`/profile/:user_id`)
+
    - **Successful Profile Retrieval**: Ensures that a user's profile details are correctly returned.
    - **User Not Found**: Tests error handling when requesting a non-existent user's profile.
    - **Authentication Required**: Confirms that authentication is required to access profile information.
    - **Field Completeness**: Verifies that all expected profile fields are included in the response.
-
 4. **Update Profile** (`/profile/:user_id`)
+
    - **Successful Profile Update**: Ensures that a user can successfully update their profile information.
    - **User Not Found**: Tests error handling when updating a non-existent user's profile.
    - **Field Validation**: Confirms validation for various profile fields (e.g., valid date formats, allowed gender values).
    - **Unauthorized Update**: Verifies that users cannot update profiles other than their own.
-
 5. **Delete Profile** (`/profile/:user_id`)
+
    - **Successful Profile Deletion**: Ensures that a user can successfully delete their account.
    - **User Not Found**: Tests error handling when deleting a non-existent user's profile.
    - **Unauthorized Deletion**: Verifies that users cannot delete profiles other than their own.
@@ -208,10 +221,12 @@ Abhijeet Mallick (33790822), Rijul Bir Singh (97518637), Anay Sinhal (68789243),
 ## In Progress
 
 ### Frontend
+
 - Integrate matcher functionality fully - it's partially working as of now.
 - Add more unit test cases
 
 ### Backend
+
 - Complete WebSocket implementation for real-time messaging and notifications.
 - Add rate limiting to prevent API abuse and enhance security.
 - Develop admin dashboard API endpoints for moderation and analytics.
@@ -219,11 +234,13 @@ Abhijeet Mallick (33790822), Rijul Bir Singh (97518637), Anay Sinhal (68789243),
 ## Backend API Documentation
 
 ### Overview
+
 The backend of CampusCupid is built using the Go programming language and the Gin framework. It provides a robust API for user authentication, profile management, matchmaking, messaging, and reporting/blocking functionalities.
 
 ### Authentication APIs
 
 #### 1. Register
+
 - **Endpoint**: `/register`
 - **Method**: POST
 - **Description**: Registers a new user with the provided details.
@@ -247,6 +264,7 @@ The backend of CampusCupid is built using the Go programming language and the Gi
   - 400 Bad Request: Validation errors or duplicate email.
 
 #### 2. Login
+
 - **Endpoint**: `/login`
 - **Method**: POST
 - **Description**: Authenticates a user and returns a JWT token.
@@ -264,6 +282,7 @@ The backend of CampusCupid is built using the Go programming language and the Gi
 ### User Profile APIs
 
 #### 1. Get User Profile
+
 - **Endpoint**: `/profile/{user_id}`
 - **Method**: GET
 - **Description**: Retrieves the profile details of a user.
@@ -274,6 +293,7 @@ The backend of CampusCupid is built using the Go programming language and the Gi
   - 404 Not Found: User not found.
 
 #### 2. Update User Profile
+
 - **Endpoint**: `/profile/{user_id}`
 - **Method**: PUT
 - **Description**: Updates the profile details of a user.
@@ -295,6 +315,7 @@ The backend of CampusCupid is built using the Go programming language and the Gi
   - 403 Forbidden: Access denied.
 
 #### 3. Delete User Profile
+
 - **Endpoint**: `/profile/{user_id}`
 - **Method**: DELETE
 - **Description**: Deletes the authenticated user's account.
@@ -305,6 +326,7 @@ The backend of CampusCupid is built using the Go programming language and the Gi
 ### Matchmaking APIs
 
 #### 1. Get Matches
+
 - **Endpoint**: `/matches/{user_id}`
 - **Method**: GET
 - **Description**: Retrieves potential matches for a user based on preferences.
@@ -313,6 +335,7 @@ The backend of CampusCupid is built using the Go programming language and the Gi
   - 403 Forbidden: Access denied.
 
 #### 2. Like User
+
 - **Endpoint**: `/like/{target_id}`
 - **Method**: POST
 - **Description**: Records a like interaction and checks for a mutual match.
@@ -321,6 +344,7 @@ The backend of CampusCupid is built using the Go programming language and the Gi
   - 400 Bad Request: Interaction already exists.
 
 #### 3. Dislike User
+
 - **Endpoint**: `/dislike/{target_id}`
 - **Method**: POST
 - **Description**: Records a dislike interaction.
@@ -328,6 +352,7 @@ The backend of CampusCupid is built using the Go programming language and the Gi
   - 200 OK: Dislike recorded successfully.
 
 #### 4. Report User
+
 - **Endpoint**: `/report/{target_id}`
 - **Method**: POST
 - **Description**: Submits a report against a user for inappropriate behavior.
@@ -341,6 +366,7 @@ The backend of CampusCupid is built using the Go programming language and the Gi
   - 201 Created: Report submitted successfully.
 
 #### 5. Block User
+
 - **Endpoint**: `/block/{target_id}`
 - **Method**: POST
 - **Description**: Blocks a user, preventing further interaction.
@@ -348,6 +374,7 @@ The backend of CampusCupid is built using the Go programming language and the Gi
   - 200 OK: User blocked successfully.
 
 #### 6. Unblock User
+
 - **Endpoint**: `/block/{target_id}`
 - **Method**: DELETE
 - **Description**: Unblocks a user, allowing interaction again.
@@ -357,6 +384,7 @@ The backend of CampusCupid is built using the Go programming language and the Gi
 ### Messaging APIs
 
 #### 1. Send Message
+
 - **Endpoint**: `/messages`
 - **Method**: POST
 - **Description**: Sends a message to a matched user.
@@ -371,6 +399,7 @@ The backend of CampusCupid is built using the Go programming language and the Gi
   - 201 Created: Message sent successfully.
 
 #### 2. Get Messages
+
 - **Endpoint**: `/messages/{user_id}`
 - **Method**: GET
 - **Description**: Retrieves the conversation between the current user and another user.
@@ -378,6 +407,7 @@ The backend of CampusCupid is built using the Go programming language and the Gi
   - 200 OK: Returns a list of messages.
 
 #### 3. Get Conversations
+
 - **Endpoint**: `/conversations`
 - **Method**: GET
 - **Description**: Retrieves a list of all conversations for the current user.

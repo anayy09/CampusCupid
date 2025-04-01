@@ -28,7 +28,7 @@ func setupTestDB() *gorm.DB {
 	dsn := os.Getenv("TEST_DATABASE_URL")
 	if dsn == "" {
 		// Use default test database connection
-		dsn = "host=localhost user=postgres password=Arpan@01 dbname=test_db port=5432 sslmode=disable TimeZone=UTC"
+		dsn = "host=localhost user=postgres password=postgres dbname=test_db port=5432 sslmode=disable TimeZone=UTC"
 	}
 
 	// Set JWT secret for testing
