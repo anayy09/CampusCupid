@@ -141,16 +141,16 @@ func GetUserProfile(c *gin.Context) {
 		return
 	}
 
-	// Check if the authenticated user is accessing their own profile
-	if uint(paramUserID) != authenticatedUserID.(uint) {
-		c.JSON(http.StatusForbidden, gin.H{"error": "Access denied: You can only view your own profile"})
-		return
-	}
-
 	// Retrieve the user info from the database
 	var user models.User
 	if err := database.DB.Where("id = ?", userID).First(&user).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+		return
+	}
+
+	// Check if the authenticated user is accessing their own profile
+	if uint(paramUserID) != authenticatedUserID.(uint) {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Access denied: You can only view your own profile"})
 		return
 	}
 
@@ -169,8 +169,8 @@ func GetUserProfile(c *gin.Context) {
 		"distance":          user.Distance,
 		"genderPreference":  user.GenderPreference,
 		"profilePictureURL": user.ProfilePictureURL,
-		"latitude":          user.Latitude,  // Added
-		"longitude":         user.Longitude, // Added
+		"latitude":          user.Latitude,
+		"longitude":         user.Longitude,
 	})
 }
 
@@ -207,16 +207,16 @@ func UpdateUserProfile(c *gin.Context) {
 		return
 	}
 
-	// Check if the authenticated user is updating their own profile
-	if uint(paramUserID) != authenticatedUserID.(uint) {
-		c.JSON(http.StatusForbidden, gin.H{"error": "Access denied: You can only update your own profile"})
-		return
-	}
-
 	// Retrieve user from database
 	var user models.User
 	if err := database.DB.Where("id = ?", userID).First(&user).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+		return
+	}
+
+	// Check if the authenticated user is updating their own profile
+	if uint(paramUserID) != authenticatedUserID.(uint) {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Access denied: You can only update your own profile"})
 		return
 	}
 
@@ -257,9 +257,6 @@ func UpdateUserProfile(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"errors": validationErrors})
 		return
 	}
-
-	// Update allowed fields
-	// user.Bio = updateData.Bio
 
 	// Only update fields that are provided (not empty)
 	if updateData.Interests != nil {
@@ -340,6 +337,13 @@ func UpdateUserPreferences(c *gin.Context) {
 		return
 	}
 
+	// Retrieve user from database first
+	var user models.User
+	if err := database.DB.Where("id = ?", userID).First(&user).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+		return
+	}
+
 	// Check if the authenticated user is updating their own preferences
 	if uint(paramUserID) != authenticatedUserID.(uint) {
 		c.JSON(http.StatusForbidden, gin.H{"error": "Access denied: You can only update your own preferences"})
@@ -406,13 +410,6 @@ func UpdateUserPreferences(c *gin.Context) {
 		return
 	}
 
-	// Retrieve user from database
-	var user models.User
-	if err := database.DB.Where("id = ?", userID).First(&user).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
-		return
-	}
-
 	user.AgeRange = preference.AgeRange
 	user.Distance = preference.Distance
 	user.GenderPreference = preference.GenderPreference
@@ -453,14 +450,15 @@ func GetMatches(c *gin.Context) {
 		return
 	}
 
-	if uint(paramUserID) != authenticatedUserID.(uint) {
-		c.JSON(http.StatusForbidden, gin.H{"error": "Access denied"})
-		return
-	}
-
 	var user models.User
 	if err := database.DB.Where("id = ?", paramUserID).First(&user).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+		return
+	}
+
+	// Check permissions after confirming user exists
+	if uint(paramUserID) != authenticatedUserID.(uint) {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Access denied"})
 		return
 	}
 
@@ -902,20 +900,22 @@ func DeleteUserProfile(c *gin.Context) {
 		return
 	}
 
+	// Check if user exists first
+	var user models.User
+	if err := database.DB.Where("id = ?", paramUserID).First(&user).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+		return
+	}
+
 	// Check if the authenticated user is deleting their own profile
 	if uint(paramUserID) != authenticatedUserID.(uint) {
 		c.JSON(http.StatusForbidden, gin.H{"error": "Access denied: You can only delete your own profile"})
 		return
 	}
 
-	// Delete the user from the database
-	result := database.DB.Where("id = ?", paramUserID).Delete(&models.User{})
-	if result.Error != nil {
+	// Delete the user
+	if err := database.DB.Delete(&user).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete profile"})
-		return
-	}
-	if result.RowsAffected == 0 {
-		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
 		return
 	}
 

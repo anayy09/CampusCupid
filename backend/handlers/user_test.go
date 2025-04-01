@@ -3,28 +3,50 @@ package handlers
 import (
 	"bytes"
 	"datingapp/database"
+	"datingapp/middleware"
 	"datingapp/models"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
-	"strconv" // Added for uint to string conversion
+	"strconv"
 	"testing"
 
+	"time"
+
 	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/stretchr/testify/assert"
-	"gorm.io/driver/sqlite"
+	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
 
-// Setup in-memory SQLite database for testing
+// Setup PostgreSQL database for testing
 func setupTestDB() *gorm.DB {
-	db, err := gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{})
-	if err != nil {
-		panic("failed to connect to database")
+	// Get PostgreSQL connection details from environment variables or use defaults
+	dsn := os.Getenv("TEST_DATABASE_URL")
+	if dsn == "" {
+		// Use default test database connection
+		dsn = "host=localhost user=postgres password=postgres dbname=test_db port=5432 sslmode=disable TimeZone=UTC"
 	}
-	// Migrate both User and Interaction models (needed for matches)
-	db.AutoMigrate(&models.User{}, &models.Interaction{})
+
+	// Set JWT secret for testing
+	os.Setenv("JWT_SECRET", "test_secret_key")
+
+	// Connect to PostgreSQL
+	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
+	if err != nil {
+		panic("failed to connect to database: " + err.Error())
+	}
+
+	// Clear tables for clean test environment
+	db.Exec("DROP TABLE IF EXISTS interactions")
+	db.Exec("DROP TABLE IF EXISTS reports")
+	db.Exec("DROP TABLE IF EXISTS users")
+
+	// Migrate models
+	db.AutoMigrate(&models.User{}, &models.Interaction{}, &models.Report{})
 	return db
 }
 
@@ -32,13 +54,42 @@ func setupTestDB() *gorm.DB {
 func setupRouter(db *gorm.DB) *gin.Engine {
 	r := gin.Default()
 	database.DB = db
+
+	// Public routes
 	r.POST("/register", Register)
 	r.POST("/login", Login)
-	r.GET("/profile/:user_id", GetUserProfile)
-	r.PUT("/profile/:user_id", UpdateUserProfile)
-	r.PUT("/preferences/:user_id", UpdateUserPreferences)
-	r.GET("/matches/:user_id", GetMatches) // Added new endpoint
+
+	// Protected routes
+	authorized := r.Group("/")
+	authorized.Use(middleware.AuthMiddleware())
+	{
+		authorized.GET("/profile/:user_id", GetUserProfile)
+		authorized.PUT("/profile/:user_id", UpdateUserProfile)
+		authorized.DELETE("/profile/:user_id", DeleteUserProfile)
+		authorized.PUT("/preferences/:user_id", UpdateUserPreferences)
+		authorized.GET("/matches/:user_id", GetMatches)
+		authorized.POST("/report/:target_id", ReportUser)
+		authorized.POST("/block/:target_id", BlockUser)
+		authorized.DELETE("/block/:target_id", UnblockUser)
+	}
+
 	return r
+}
+
+// Helper function to generate JWT token for testing
+func generateTestToken(userID uint) string {
+	token := jwt.New(jwt.SigningMethodHS256)
+	claims := token.Claims.(jwt.MapClaims)
+	claims["user_id"] = fmt.Sprintf("%d", userID) // Convert uint to string
+	claims["exp"] = time.Now().Add(24 * time.Hour).Unix()
+	tokenString, _ := token.SignedString([]byte(os.Getenv("JWT_SECRET")))
+	return tokenString
+}
+
+// Helper function to add auth header to request
+func addAuthHeader(req *http.Request, userID uint) {
+	token := generateTestToken(userID)
+	req.Header.Set("Authorization", "Bearer "+token)
 }
 
 // TestResult defines the structure of the test result
@@ -171,7 +222,7 @@ func TestRegister(t *testing.T) {
 				FirstName: "John", // Missing email, password, etc.
 			},
 			expectedCode: http.StatusBadRequest,
-			expectedBody: `{"error":"Key: 'RegistrationRequest.Email' Error:Field validation for 'Email' failed on the 'required' tag`,
+			expectedBody: `{"error":"Key: 'RegistrationRequest.Email' Error:Field validation for 'Email' failed on the 'required' tag\nKey: 'RegistrationRequest.Password' Error:Field validation for 'Password' failed on the 'required' tag\nKey: 'RegistrationRequest.DateOfBirth' Error:Field validation for 'DateOfBirth' failed on the 'required' tag\nKey: 'RegistrationRequest.Gender' Error:Field validation for 'Gender' failed on the 'required' tag\nKey: 'RegistrationRequest.InterestedIn' Error:Field validation for 'InterestedIn' failed on the 'required' tag\nKey: 'RegistrationRequest.LookingFor' Error:Field validation for 'LookingFor' failed on the 'required' tag\nKey: 'RegistrationRequest.Interests' Error:Field validation for 'Interests' failed on the 'required' tag\nKey: 'RegistrationRequest.Photos' Error:Field validation for 'Photos' failed on the 'required' tag"}`,
 		},
 	}
 
@@ -305,7 +356,7 @@ func TestGetUserProfile(t *testing.T) {
 	// Fetch the latest user ID dynamically
 	var latestUser models.User
 	db.Order("id desc").First(&latestUser)
-	userID := strconv.Itoa(int(latestUser.ID)) // Convert uint to string
+	userID := strconv.Itoa(int(latestUser.ID))
 
 	tests := []struct {
 		name         string
@@ -330,6 +381,10 @@ func TestGetUserProfile(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			req, _ := http.NewRequest("GET", "/profile/"+tt.userID, nil)
+			// Add authentication header
+			addAuthHeader(req, latestUser.ID)
+			req.Header.Set("Content-Type", "application/json")
+
 			w := httptest.NewRecorder()
 			router.ServeHTTP(w, req)
 
@@ -406,6 +461,7 @@ func TestUpdateUserProfile(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			payloadBytes, _ := json.Marshal(tt.payload)
 			req, _ := http.NewRequest("PUT", "/profile/"+tt.userID, bytes.NewBuffer(payloadBytes))
+			addAuthHeader(req, latestUser.ID) // Add authentication
 			req.Header.Set("Content-Type", "application/json")
 
 			w := httptest.NewRecorder()
@@ -484,6 +540,7 @@ func TestUpdateUserPreferences(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			payloadBytes, _ := json.Marshal(tt.payload)
 			req, _ := http.NewRequest("PUT", "/preferences/"+tt.userID, bytes.NewBuffer(payloadBytes))
+			addAuthHeader(req, latestUser.ID) // Add authentication
 			req.Header.Set("Content-Type", "application/json")
 
 			w := httptest.NewRecorder()
@@ -549,21 +606,18 @@ func TestGetMatches(t *testing.T) {
 	user2.HashPassword(user2.Password)
 	db.Create(&user2)
 
-	// Fetch the latest user ID dynamically (John's ID)
-	var latestUser models.User
-	db.Order("id desc").First(&latestUser)
-	userID := strconv.Itoa(int(latestUser.ID)) // Convert uint to string
-
 	tests := []struct {
 		name         string
 		userID       string
+		authUserID   uint
 		query        string
 		expectedCode int
 		expectedBody string
 	}{
 		{
 			name:         "Successful Matches Retrieval",
-			userID:       userID, // John's ID
+			userID:       strconv.Itoa(int(user1.ID)),
+			authUserID:   user1.ID,
 			query:        "?page=1&limit=10",
 			expectedCode: http.StatusOK,
 			expectedBody: `"firstName":"Jane"`, // Expect Jane as a match
@@ -571,6 +625,7 @@ func TestGetMatches(t *testing.T) {
 		{
 			name:         "User Not Found",
 			userID:       "999",
+			authUserID:   user1.ID,
 			query:        "?page=1&limit=10",
 			expectedCode: http.StatusNotFound,
 			expectedBody: `{"error":"User not found"}`,
@@ -578,6 +633,7 @@ func TestGetMatches(t *testing.T) {
 		{
 			name:         "Invalid User ID",
 			userID:       "invalid",
+			authUserID:   user1.ID,
 			query:        "?page=1&limit=10",
 			expectedCode: http.StatusBadRequest,
 			expectedBody: `{"error":"Invalid user ID"}`,
@@ -587,14 +643,15 @@ func TestGetMatches(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			req, _ := http.NewRequest("GET", "/matches/"+tt.userID+tt.query, nil)
+			addAuthHeader(req, tt.authUserID)
+			req.Header.Set("Content-Type", "application/json")
+
 			w := httptest.NewRecorder()
 			router.ServeHTTP(w, req)
 
-			// Assert the test result
 			assert.Equal(t, tt.expectedCode, w.Code)
 			assert.Contains(t, w.Body.String(), tt.expectedBody)
 
-			// Write the test result to the corresponding group
 			result := TestResult{
 				TestName: tt.name,
 				Status:   http.StatusText(w.Code),
@@ -653,12 +710,17 @@ func TestDeleteUserProfile(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			req, _ := http.NewRequest("DELETE", "/profile/"+tt.userID, nil)
+			addAuthHeader(req, latestUser.ID) // Add authentication
+			req.Header.Set("Content-Type", "application/json")
+
 			w := httptest.NewRecorder()
 			router.ServeHTTP(w, req)
 
+			// Assert the test result
 			assert.Equal(t, tt.expectedCode, w.Code)
 			assert.Contains(t, w.Body.String(), tt.expectedBody)
 
+			// Write the test result to the corresponding group
 			result := TestResult{
 				TestName: tt.name,
 				Status:   http.StatusText(w.Code),
@@ -704,22 +766,26 @@ func TestReportUser(t *testing.T) {
 	target.HashPassword(target.Password)
 	db.Create(&target)
 
-	// Fetch the latest user IDs dynamically
-	var latestReporter, latestTarget models.User
-	db.Order("id desc").First(&latestReporter)
-	db.Where("email = ?", "bob@example.com").First(&latestTarget)
-	targetID := strconv.Itoa(int(latestTarget.ID))
-
 	tests := []struct {
 		name         string
 		targetID     string
+		authUserID   uint
 		requestBody  string
 		expectedCode int
 		expectedBody string
 	}{
 		{
+			name:         "Missing Reason",
+			targetID:     strconv.Itoa(int(target.ID)),
+			authUserID:   reporter.ID,
+			requestBody:  `{}`,
+			expectedCode: http.StatusBadRequest,
+			expectedBody: `{"error":"Reason is required"}`,
+		},
+		{
 			name:         "Successful Report",
-			targetID:     targetID,
+			targetID:     strconv.Itoa(int(target.ID)),
+			authUserID:   reporter.ID,
 			requestBody:  `{"reason": "Inappropriate messages"}`,
 			expectedCode: http.StatusCreated,
 			expectedBody: `{"message":"Report submitted successfully"}`,
@@ -727,20 +793,15 @@ func TestReportUser(t *testing.T) {
 		{
 			name:         "Target User Not Found",
 			targetID:     "999",
+			authUserID:   reporter.ID,
 			requestBody:  `{"reason": "Spam"}`,
 			expectedCode: http.StatusNotFound,
 			expectedBody: `{"error":"Target user not found"}`,
 		},
 		{
-			name:         "Missing Reason",
-			targetID:     targetID,
-			requestBody:  `{}`,
-			expectedCode: http.StatusBadRequest,
-			expectedBody: `{"error":"Reason is required"}`,
-		},
-		{
 			name:         "Report Self",
-			targetID:     strconv.Itoa(int(latestReporter.ID)),
+			targetID:     strconv.Itoa(int(reporter.ID)),
+			authUserID:   reporter.ID,
 			requestBody:  `{"reason": "Testing"}`,
 			expectedCode: http.StatusBadRequest,
 			expectedBody: `{"error":"You cannot report yourself"}`,
@@ -751,7 +812,9 @@ func TestReportUser(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			body := bytes.NewBufferString(tt.requestBody)
 			req, _ := http.NewRequest("POST", "/report/"+tt.targetID, body)
+			addAuthHeader(req, tt.authUserID)
 			req.Header.Set("Content-Type", "application/json")
+
 			w := httptest.NewRecorder()
 			router.ServeHTTP(w, req)
 
@@ -803,33 +866,31 @@ func TestBlockUser(t *testing.T) {
 	target.HashPassword(target.Password)
 	db.Create(&target)
 
-	// Fetch the latest user IDs dynamically
-	var latestBlocker, latestTarget models.User
-	db.Order("id desc").First(&latestBlocker)
-	db.Where("email = ?", "bob@example.com").First(&latestTarget)
-	targetID := strconv.Itoa(int(latestTarget.ID))
-
 	tests := []struct {
 		name         string
 		targetID     string
+		authUserID   uint
 		expectedCode int
 		expectedBody string
 	}{
 		{
 			name:         "Successful Block",
-			targetID:     targetID,
+			targetID:     strconv.Itoa(int(target.ID)),
+			authUserID:   blocker.ID,
 			expectedCode: http.StatusOK,
 			expectedBody: `{"message":"User blocked successfully"}`,
 		},
 		{
 			name:         "Target User Not Found",
 			targetID:     "999",
+			authUserID:   blocker.ID,
 			expectedCode: http.StatusNotFound,
 			expectedBody: `{"error":"Target user not found"}`,
 		},
 		{
 			name:         "Block Self",
-			targetID:     strconv.Itoa(int(latestBlocker.ID)),
+			targetID:     strconv.Itoa(int(blocker.ID)),
+			authUserID:   blocker.ID,
 			expectedCode: http.StatusBadRequest,
 			expectedBody: `{"error":"You cannot block yourself"}`,
 		},
@@ -838,6 +899,9 @@ func TestBlockUser(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			req, _ := http.NewRequest("POST", "/block/"+tt.targetID, nil)
+			addAuthHeader(req, tt.authUserID)
+			req.Header.Set("Content-Type", "application/json")
+
 			w := httptest.NewRecorder()
 			router.ServeHTTP(w, req)
 
@@ -870,6 +934,7 @@ func TestUnblockUser(t *testing.T) {
 		Interests:         []string{"Hiking"},
 		SexualOrientation: "Straight",
 		Photos:            []string{"photo1.jpg"},
+		BlockedUsers:      []uint{}, // Initialize empty blocked list
 	}
 	blocker.HashPassword(blocker.Password)
 	db.Create(&blocker)
@@ -889,37 +954,35 @@ func TestUnblockUser(t *testing.T) {
 	target.HashPassword(target.Password)
 	db.Create(&target)
 
-	// Fetch the latest user IDs dynamically
-	var latestBlocker, latestTarget models.User
-	db.Order("id desc").First(&latestBlocker)
-	db.Where("email = ?", "bob@example.com").First(&latestTarget)
-	targetID := strconv.Itoa(int(latestTarget.ID))
-
-	// Block the target user first
-	latestBlocker.BlockedUsers = append(latestBlocker.BlockedUsers, latestTarget.ID)
-	db.Save(&latestBlocker)
+	// Block the target user first for the unblock test
+	blocker.BlockedUsers = append(blocker.BlockedUsers, target.ID)
+	db.Save(&blocker)
 
 	tests := []struct {
 		name         string
 		targetID     string
+		authUserID   uint
 		expectedCode int
 		expectedBody string
 	}{
 		{
 			name:         "Successful Unblock",
-			targetID:     targetID,
+			targetID:     strconv.Itoa(int(target.ID)),
+			authUserID:   blocker.ID,
 			expectedCode: http.StatusOK,
 			expectedBody: `{"message":"User unblocked successfully"}`,
 		},
 		{
 			name:         "Target User Not Found",
 			targetID:     "999",
+			authUserID:   blocker.ID,
 			expectedCode: http.StatusNotFound,
 			expectedBody: `{"error":"Target user not found"}`,
 		},
 		{
 			name:         "User Not Blocked",
-			targetID:     targetID, // Run after unblocking to test non-blocked state
+			targetID:     strconv.Itoa(int(target.ID)),
+			authUserID:   blocker.ID,
 			expectedCode: http.StatusBadRequest,
 			expectedBody: `{"error":"User is not blocked"}`,
 		},
@@ -928,6 +991,9 @@ func TestUnblockUser(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			req, _ := http.NewRequest("DELETE", "/block/"+tt.targetID, nil)
+			addAuthHeader(req, tt.authUserID)
+			req.Header.Set("Content-Type", "application/json")
+
 			w := httptest.NewRecorder()
 			router.ServeHTTP(w, req)
 
@@ -941,12 +1007,12 @@ func TestUnblockUser(t *testing.T) {
 			}
 			writeTestResult("/block/:target_id", result)
 
-			// For the "User Not Blocked" test, ensure the user is unblocked after the first test
+			// For subsequent tests that need the user to be unblocked
 			if tt.name == "Successful Unblock" {
-				var updatedUser models.User
-				db.Where("id = ?", latestBlocker.ID).First(&updatedUser)
-				updatedUser.BlockedUsers = []uint{} // Clear blocked list for next test
-				db.Save(&updatedUser)
+				var updatedBlocker models.User
+				db.First(&updatedBlocker, blocker.ID)
+				updatedBlocker.BlockedUsers = []uint{} // Clear blocked list
+				db.Save(&updatedBlocker)
 			}
 		})
 	}
