@@ -10,9 +10,15 @@ import {
   IconButton, 
   Paper,
   ThemeProvider,
-  createTheme
+  createTheme,
+  Chip,
+  Avatar,
+  AppBar,
+  Toolbar,
+  Snackbar,
+  Alert
 } from '@mui/material';
-import { Close as CloseIcon, Favorite as FavoriteIcon } from '@mui/icons-material';
+import { Close as CloseIcon, Favorite as FavoriteIcon, ArrowBack as ArrowBackIcon } from '@mui/icons-material';
 
 const theme = createTheme({
   palette: {
@@ -37,7 +43,7 @@ const theme = createTheme({
 });
 
 const API_URL = process.env.REACT_APP_API_URL || 'https://campuscupid-backend.onrender.com';
-const DEFAULT_PROFILE_IMAGE = '/default-profile.jpg'; // Add a default profile image to your public folder
+const DEFAULT_PROFILE_IMAGE = '/default-profile.jpg';
 
 function MatcherPage() {
   const navigate = useNavigate();
@@ -49,63 +55,46 @@ function MatcherPage() {
   const [offsetX, setOffsetX] = useState(0);
   const cardRef = useRef(null);
   const [imageLoadError, setImageLoadError] = useState(false);
+  const [matchAlert, setMatchAlert] = useState({ open: false, message: '' });
 
   // Fetch profiles from the backend API
   useEffect(() => {
     const fetchProfiles = async () => {
       try {
         const token = localStorage.getItem('token');
-        if (!token) {
-          console.error('No auth token found. Redirecting to login.');
+        const userId = localStorage.getItem('userId');
+        
+        if (!token || !userId) {
+          console.error('Authentication information missing. Redirecting to login.');
           navigate('/login');
           return;
         }
         
-        // Get the current user's ID
-        const currentUserId = localStorage.getItem('userId') || 'me';
-        
-        // Fetch potential matches
-        const response = await axios.get(`${API_URL}/users/matches`, {
+        // Fetch potential matches using the correct API endpoint
+        const response = await axios.get(`${API_URL}/matches/${userId}`, {
           headers: { Authorization: `Bearer ${token}` }
         });
         
-        // If the matches endpoint is not available, fall back to fetching profiles individually
-        if (!response.data || !Array.isArray(response.data) || response.data.length === 0) {
-          console.log("No matches available, fetching sample profiles");
-          // Fallback to sample profiles
-          const userIds = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-          const profileRequests = userIds.map(id =>
-            axios.get(`${API_URL}/profile/${id}`, {
-              headers: { Authorization: `Bearer ${token}` }
-            }).catch(error => {
-              console.warn(`Failed to fetch profile ${id}:`, error);
-              return { data: null };
-            })
-          );
-          
-          const responses = await Promise.all(profileRequests);
-          const fetchedProfiles = responses
-            .map(response => response.data)
-            .filter(profile => profile !== null);
-          
-          console.log("Fetched profiles:", fetchedProfiles);
-          
-          setProfiles(fetchedProfiles);
-          if (fetchedProfiles.length > 0) {
-            setCurrentProfile(fetchedProfiles[0]);
-          }
-        } else {
+        if (response.data && Array.isArray(response.data) && response.data.length > 0) {
           console.log("Matches fetched:", response.data);
           setProfiles(response.data);
-          if (response.data.length > 0) {
-            setCurrentProfile(response.data[0]);
-          }
+          setCurrentProfile(response.data[0]);
+        } else {
+          console.log("No matches available");
+          // Leave profiles empty which will trigger the empty state UI
         }
         
         setLoading(false);
       } catch (error) {
-        console.error("Error fetching profiles:", error);
+        console.error("Error fetching profiles:", error.response?.data?.error || error.message);
         setLoading(false);
+        
+        // If error is 401 or 403, redirect to login
+        if (error.response?.status === 401 || error.response?.status === 403) {
+          localStorage.removeItem('token');
+          localStorage.removeItem('userId');
+          navigate('/login');
+        }
       }
     };
 
@@ -131,15 +120,23 @@ function MatcherPage() {
   const handleLike = async () => {
     if (!currentProfile) return;
     setSwipeDirection('right');
-    console.log(`Liked user ${currentProfile.id}`);
     
     try {
       const token = localStorage.getItem('token');
-      await axios.post(`${API_URL}/users/like/${currentProfile.id}`, {}, {
+      const response = await axios.post(`${API_URL}/like/${currentProfile.id}`, {}, {
         headers: { Authorization: `Bearer ${token}` }
       });
+      
+      // Check if this like created a match
+      if (response.data && response.data.matched) {
+        setMatchAlert({ 
+          open: true, 
+          message: `You matched with ${currentProfile.firstName}!` 
+        });
+      }
+      
     } catch (error) {
-      console.error(`Error liking user ${currentProfile.id}:`, error);
+      console.error(`Error liking user ${currentProfile.id}:`, error.response?.data?.error || error.message);
     }
     
     setTimeout(() => {
@@ -153,15 +150,14 @@ function MatcherPage() {
   const handleDislike = async () => {
     if (!currentProfile) return;
     setSwipeDirection('left');
-    console.log(`Disliked user ${currentProfile.id}`);
     
     try {
       const token = localStorage.getItem('token');
-      await axios.post(`${API_URL}/users/dislike/${currentProfile.id}`, {}, {
+      await axios.post(`${API_URL}/dislike/${currentProfile.id}`, {}, {
         headers: { Authorization: `Bearer ${token}` }
       });
     } catch (error) {
-      console.error(`Error disliking user ${currentProfile.id}:`, error);
+      console.error(`Error disliking user ${currentProfile.id}:`, error.response?.data?.error || error.message);
     }
     
     setTimeout(() => {
@@ -179,6 +175,10 @@ function MatcherPage() {
     } else {
       setCurrentProfile(null);
     }
+  };
+
+  const handleBackToDashboard = () => {
+    navigate('/dashboard');
   };
 
   // Touch event handlers for swiping
@@ -236,166 +236,233 @@ function MatcherPage() {
 
   // Handler for image load errors
   const handleImageError = () => {
-    console.error("Failed to load profile image");
     setImageLoadError(true);
   };
 
-  // Render loading state
-  if (loading) {
-    return (
-      <ThemeProvider theme={theme}>
-        <Container sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
-          <CircularProgress color="primary" />
-        </Container>
-      </ThemeProvider>
-    );
-  }
-
-  // Render empty state when no more profiles
-  if (!currentProfile) {
-    return (
-      <ThemeProvider theme={theme}>
-        <Container sx={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
-          <Typography variant="h5" sx={{ mb: 2 }}>No more profiles to show</Typography>
-          <Button 
-            variant="contained" 
-            color="primary"
-            onClick={() => window.location.reload()}
-            sx={{
-              background: 'linear-gradient(45deg, #FE3C72 30%, #FF6036 90%)',
-              boxShadow: '0 4px 12px rgba(254, 60, 114, 0.3)',
-            }}
-          >
-            Refresh
-          </Button>
-        </Container>
-      </ThemeProvider>
-    );
-  }
-
-  // Determine profile image URL
-  const profileImageUrl = currentProfile.profilePictureURL || DEFAULT_PROFILE_IMAGE;
+  const handleCloseAlert = () => {
+    setMatchAlert({ ...matchAlert, open: false });
+  };
 
   return (
     <ThemeProvider theme={theme}>
-      <Container maxWidth="sm" sx={{ pt: 4, pb: 4, height: '100vh', display: 'flex', flexDirection: 'column' }}>
-        <Typography 
-          variant="h4" 
-          component="h1" 
-          sx={{ 
-            textAlign: 'center', 
-            mb: 4, 
-            fontWeight: 'bold',
-            background: '-webkit-linear-gradient(45deg, #FE3C72 30%, #FF6036 90%)',
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent',
-          }}
-        >
-          Campus Cupid
-        </Typography>
-        
-        <Box sx={{ flexGrow: 1, position: 'relative', mb: 4 }}>
-          <Paper
-            ref={cardRef}
-            elevation={8}
-            sx={{
-              height: '500px',
-              borderRadius: '16px',
-              overflow: 'hidden', 
-              position: 'relative',
-              ...getCardStyle()
-            }}
-            onTouchStart={handleTouchStart}
-            onTouchMove={handleTouchMove}
-            onTouchEnd={handleTouchEnd}
-          >
-            {imageLoadError ? (
-              <Box
-                sx={{
-                  height: '100%',
-                  width: '100%',
-                  backgroundColor: '#f0f0f0',
-                  display: 'flex',
-                  justifyContent: 'center',
-                  alignItems: 'center'
-                }}
-              >
-                <Typography variant="body1">Image not available</Typography>
-              </Box>
-            ) : (
-              <Box
-                sx={{
-                  height: '100%',
-                  width: '100%',
-                  bgcolor: '#f0f0f0', // Background color while image loads
-                  position: 'relative',
-                }}
-              >
-                <img
-                  src={profileImageUrl}
-                  alt={`${currentProfile.firstName}'s profile`}
-                  onError={handleImageError}
-                  style={{
-                    width: '100%',
-                    height: '100%',
-                    objectFit: 'cover',
-                    display: imageLoadError ? 'none' : 'block'
-                  }}
-                />
-              </Box>
-            )}
-            
-            <Box 
-              sx={{
-                position: 'absolute',
-                bottom: 0,
-                left: 0,
-                right: 0,
-                background: 'linear-gradient(to top, rgba(0,0,0,0.8), rgba(0,0,0,0.4) 50%, rgba(0,0,0,0))',
-                padding: 3,
-                color: 'white',
+      <Box sx={{ flexGrow: 1, minHeight: '100vh', bgcolor: '#f8f8f8' }}>
+        <AppBar position="static" sx={{ bgcolor: 'white', boxShadow: '0 2px 10px rgba(0, 0, 0, 0.1)' }}>
+          <Toolbar>
+            <IconButton 
+              edge="start" 
+              color="inherit" 
+              aria-label="back to dashboard"
+              onClick={handleBackToDashboard}
+              sx={{ color: theme.palette.primary.main }}
+            >
+              <ArrowBackIcon />
+            </IconButton>
+            <Typography 
+              variant="h6" 
+              component="div" 
+              sx={{ 
+                flexGrow: 1, 
+                textAlign: 'center',
+                fontWeight: 'bold',
+                color: theme.palette.primary.main
               }}
             >
-              <Typography variant="h4" component="h2" sx={{ fontWeight: 'bold' }}>
-                {currentProfile.firstName}, {calculateAge(currentProfile.dateOfBirth)}
-              </Typography>
-              <Typography variant="body1" sx={{ mt: 1 }}>
-                {currentProfile.bio || 'No bio available'}
+              Find Matches
+            </Typography>
+          </Toolbar>
+        </AppBar>
+
+        <Container 
+          maxWidth="sm" 
+          sx={{ 
+            pt: 4, 
+            pb: 4, 
+            display: 'flex', 
+            flexDirection: 'column',
+            justifyContent: loading || !currentProfile ? 'center' : 'flex-start',
+            minHeight: 'calc(100vh - 64px)'
+          }}
+        >
+          {loading ? (
+            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+              <CircularProgress color="primary" />
+              <Typography variant="body1" sx={{ mt: 2 }}>
+                Finding potential matches...
               </Typography>
             </Box>
-          </Paper>
-        </Box>
+          ) : !currentProfile ? (
+            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
+              <Typography variant="h5" sx={{ mb: 2 }}>No more profiles to show</Typography>
+              <Typography variant="body1" sx={{ mb: 4, color: 'text.secondary' }}>
+                We'll notify you when new matches become available
+              </Typography>
+              <Button 
+                variant="contained" 
+                color="primary"
+                onClick={() => navigate('/dashboard')}
+                sx={{
+                  background: 'linear-gradient(45deg, #FE3C72 30%, #FF6036 90%)',
+                  boxShadow: '0 4px 12px rgba(254, 60, 114, 0.3)',
+                  px: 4,
+                  py: 1.5
+                }}
+              >
+                Back to Dashboard
+              </Button>
+            </Box>
+          ) : (
+            <>
+              <Box sx={{ position: 'relative', mb: 4 }}>
+                <Paper
+                  ref={cardRef}
+                  elevation={8}
+                  sx={{
+                    height: '500px',
+                    borderRadius: '16px',
+                    overflow: 'hidden', 
+                    position: 'relative',
+                    ...getCardStyle()
+                  }}
+                  onTouchStart={handleTouchStart}
+                  onTouchMove={handleTouchMove}
+                  onTouchEnd={handleTouchEnd}
+                >
+                  {imageLoadError ? (
+                    <Box
+                      sx={{
+                        height: '100%',
+                        width: '100%',
+                        backgroundColor: '#f0f0f0',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        p: 3
+                      }}
+                    >
+                      <Avatar 
+                        sx={{ 
+                          width: 100, 
+                          height: 100, 
+                          mb: 2,
+                          bgcolor: theme.palette.primary.light
+                        }}
+                      >
+                        {currentProfile.firstName && currentProfile.firstName.charAt(0)}
+                      </Avatar>
+                      <Typography variant="body1">Profile picture not available</Typography>
+                    </Box>
+                  ) : (
+                    <Box
+                      sx={{
+                        height: '100%',
+                        width: '100%',
+                        position: 'relative',
+                      }}
+                    >
+                      <img
+                        src={currentProfile.profilePictureURL || DEFAULT_PROFILE_IMAGE}
+                        alt={`${currentProfile.firstName}'s profile`}
+                        onError={handleImageError}
+                        style={{
+                          width: '100%',
+                          height: '100%',
+                          objectFit: 'cover',
+                        }}
+                      />
+                    </Box>
+                  )}
+                  
+                  <Box 
+                    sx={{
+                      position: 'absolute',
+                      bottom: 0,
+                      left: 0,
+                      right: 0,
+                      background: 'linear-gradient(to top, rgba(0,0,0,0.8), rgba(0,0,0,0.4) 50%, rgba(0,0,0,0))',
+                      padding: 3,
+                      color: 'white',
+                    }}
+                  >
+                    <Typography variant="h4" component="h2" sx={{ fontWeight: 'bold' }}>
+                      {currentProfile.firstName}, {calculateAge(currentProfile.dateOfBirth)}
+                    </Typography>
+                    
+                    {currentProfile.lookingFor && (
+                      <Typography variant="body1" sx={{ mt: 0.5, opacity: 0.9 }}>
+                        Looking for: {currentProfile.lookingFor}
+                      </Typography>
+                    )}
+                    
+                    {currentProfile.interests && currentProfile.interests.length > 0 && (
+                      <Box sx={{ mt: 1.5, display: 'flex', flexWrap: 'wrap', gap: 0.8 }}>
+                        {currentProfile.interests.map((interest, index) => (
+                          <Chip 
+                            key={index} 
+                            label={interest} 
+                            size="small" 
+                            sx={{ 
+                              bgcolor: 'rgba(255, 255, 255, 0.2)',
+                              color: 'white',
+                              fontSize: '0.75rem'
+                            }} 
+                          />
+                        ))}
+                      </Box>
+                    )}
+                  </Box>
+                </Paper>
+              </Box>
+              
+              <Box sx={{ display: 'flex', justifyContent: 'center', gap: 4, mb: 2 }}>
+                <IconButton 
+                  onClick={handleDislike}
+                  sx={{ 
+                    backgroundColor: 'white', 
+                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+                    p: 2,
+                    '&:hover': { backgroundColor: '#F5F5F5' }
+                  }}
+                >
+                  <CloseIcon fontSize="large" sx={{ color: '#FE3C72' }} />
+                </IconButton>
+                
+                <IconButton 
+                  onClick={handleLike}
+                  sx={{ 
+                    backgroundColor: 'white', 
+                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+                    p: 2,
+                    '&:hover': { backgroundColor: '#F5F5F5' }
+                  }}
+                >
+                  <FavoriteIcon fontSize="large" sx={{ color: '#24E5A0' }} />
+                </IconButton>
+              </Box>
+              
+              <Typography variant="body2" sx={{ textAlign: 'center', color: 'grey.600' }}>
+                Swipe left/right or use arrow keys to navigate
+              </Typography>
+            </>
+          )}
+        </Container>
         
-        <Box sx={{ display: 'flex', justifyContent: 'center', gap: 4, mb: 2 }}>
-          <IconButton 
-            onClick={handleDislike}
-            sx={{ 
-              backgroundColor: 'white', 
-              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-              p: 2,
-              '&:hover': { backgroundColor: '#F5F5F5' }
-            }}
+        <Snackbar
+          open={matchAlert.open}
+          autoHideDuration={5000}
+          onClose={handleCloseAlert}
+          anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+        >
+          <Alert
+            onClose={handleCloseAlert}
+            severity="success"
+            variant="filled"
+            sx={{ width: '100%' }}
           >
-            <CloseIcon fontSize="large" sx={{ color: '#FE3C72' }} />
-          </IconButton>
-          
-          <IconButton 
-            onClick={handleLike}
-            sx={{ 
-              backgroundColor: 'white', 
-              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-              p: 2,
-              '&:hover': { backgroundColor: '#F5F5F5' }
-            }}
-          >
-            <FavoriteIcon fontSize="large" sx={{ color: '#24E5A0' }} />
-          </IconButton>
-        </Box>
-        
-        <Typography variant="body2" sx={{ textAlign: 'center', color: 'grey.600' }}>
-          Swipe left/right or use arrow keys to navigate
-        </Typography>
-      </Container>
+            {matchAlert.message}
+          </Alert>
+        </Snackbar>
+      </Box>
     </ThemeProvider>
   );
 }

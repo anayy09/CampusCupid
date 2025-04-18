@@ -47,7 +47,7 @@ const theme = createTheme({
   },
 });
 
-const API_URL = process.env.REACT_APP_API_URL || 'https://campuscupid-backend.onrender.com';
+const API_URL = process.env.REACT_APP_API_URL;
 const DEFAULT_PROFILE_IMAGE = '/default-profile.jpg';
 
 function DashboardPage() {
@@ -109,6 +109,10 @@ function DashboardPage() {
 
   const handleCloseSnackbar = () => {
     setOpenSnackbar(false);
+  };
+  
+  const handleFindMatches = () => {
+    navigate('/matcher');
   };
 
   if (loading) {
@@ -186,6 +190,17 @@ function DashboardPage() {
                   }}
                 >
                   Edit Profile
+                </Button>
+                <Button 
+                  variant="contained" 
+                  startIcon={<MatchIcon />}
+                  sx={{
+                    background: 'linear-gradient(45deg, #FE3C72 30%, #FF6036 90%)',
+                    textTransform: 'none'
+                  }}
+                  onClick={handleFindMatches}
+                >
+                  Find Matches
                 </Button>
               </Box>
             </Grid>

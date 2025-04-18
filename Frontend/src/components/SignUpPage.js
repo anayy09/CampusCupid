@@ -113,7 +113,7 @@ const suggestedInterests = [
 ];
 
 // Updated API URL - replace with your backend URL
-const API_URL = 'https://campuscupid-backend.onrender.com';
+const API_URL = process.env.REACT_APP_API_URL;
 
 function SignUpPage() {
   const navigate = useNavigate();
