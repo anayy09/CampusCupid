@@ -462,21 +462,92 @@ func GetMatches(c *gin.Context) {
 		return
 	}
 
-	var matches []models.User
-	query := database.DB.Where("id != ? AND gender IN (?) AND interested_in = ? AND looking_for = ?",
-		paramUserID, strings.Split(user.InterestedIn, ","), user.Gender, user.LookingFor)
+	// Pagination parameters
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
+	offset := (page - 1) * limit
+
+	// Get list of users current user has already interacted with
+	var interactedUserIDs []uint
+	if err := database.DB.Model(&models.Interaction{}).
+		Where("user_id = ?", paramUserID).
+		Pluck("target_id", &interactedUserIDs).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve interaction history"})
+		return
+	}
+
+	// Add current user's ID to the list of excluded IDs
+	excludedIDs := append(interactedUserIDs, uint(paramUserID))
+
+	// Start building the query with basic exclusions
+	query := database.DB.Model(&models.User{}).Where("id NOT IN ?", excludedIDs)
+
+	// Apply gender preference filter if specified
+	if user.GenderPreference != "" && user.GenderPreference != "All" {
+		query = query.Where("gender = ?", user.GenderPreference)
+	}
+
+	// Apply age range filter if specified
+	if user.AgeRange != "" {
+		ageRangeParts := strings.Split(user.AgeRange, "-")
+		if len(ageRangeParts) == 2 {
+			minAge, minErr := strconv.Atoi(ageRangeParts[0])
+			maxAge, maxErr := strconv.Atoi(ageRangeParts[1])
+
+			if minErr == nil && maxErr == nil {
+				// Calculate date range for the age filter
+				maxDOB := time.Now().AddDate(-minAge, 0, 0).Format("2006-01-02")
+				minDOB := time.Now().AddDate(-maxAge-1, 0, 0).Format("2006-01-02")
+
+				query = query.Where("date_of_birth <= ? AND date_of_birth >= ?", maxDOB, minDOB)
+			}
+		}
+	}
 
 	// Filter out blocked users
 	if len(user.BlockedUsers) > 0 {
 		query = query.Where("id NOT IN ?", user.BlockedUsers)
 	}
 
-	if err := query.Find(&matches).Error; err != nil {
+	// Get the matches
+	var matches []models.User
+	if err := query.Limit(limit).Offset(offset).Find(&matches).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve matches"})
 		return
 	}
 
-	c.JSON(http.StatusOK, matches)
+	// If no matches found with strict criteria, relax the criteria
+	if len(matches) == 0 {
+		// Reset query to just exclude users already interacted with and self
+		query = database.DB.Model(&models.User{}).Where("id NOT IN ?", excludedIDs)
+
+		// Filter out blocked users
+		if len(user.BlockedUsers) > 0 {
+			query = query.Where("id NOT IN ?", user.BlockedUsers)
+		}
+
+		if err := query.Limit(limit).Offset(offset).Find(&matches).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve matches"})
+			return
+		}
+	}
+
+	// Make sure we're not returning sensitive information
+	var sanitizedMatches []gin.H
+	for _, match := range matches {
+		sanitizedMatches = append(sanitizedMatches, gin.H{
+			"id":                match.ID,
+			"firstName":         match.FirstName,
+			"dateOfBirth":       match.DateOfBirth,
+			"gender":            match.Gender,
+			"interests":         match.Interests,
+			"lookingFor":        match.LookingFor,
+			"profilePictureURL": match.ProfilePictureURL,
+			"bio":               match.Bio,
+		})
+	}
+
+	c.JSON(http.StatusOK, sanitizedMatches)
 }
 
 // SendMessage sends a message from one user to another
