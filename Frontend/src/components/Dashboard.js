@@ -31,7 +31,7 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import NavBar from './common/NavBar';
 
-const API_URL = process.env.REACT_APP_API_URL || 'https://campuscupid-backend.onrender.com';
+const API_URL = process.env.REACT_APP_API_URL || 'https://campuscupid.onrender.com';
 const DEFAULT_PROFILE_IMAGE = '/default-profile.jpg';
 
 function DashboardPage() {

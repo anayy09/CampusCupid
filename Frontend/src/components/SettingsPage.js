@@ -21,7 +21,7 @@ import axios from 'axios';
 import NavBar from './common/NavBar';
 import ThemeProvider from './common/ThemeProvider';
 // API URL
-const API_URL = process.env.REACT_APP_API_URL || 'https://campuscupid-backend.onrender.com';
+const API_URL = process.env.REACT_APP_API_URL || 'https://campuscupid.onrender.com';
 
 function SettingsPage() {
   const navigate = useNavigate();

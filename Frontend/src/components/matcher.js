@@ -20,7 +20,7 @@ import {
 import { Close as CloseIcon, Favorite as FavoriteIcon, ArrowBack as ArrowBackIcon } from '@mui/icons-material';
 import NavBar from './common/NavBar';
 
-const API_URL = process.env.REACT_APP_API_URL || 'https://campuscupid-backend.onrender.com';
+const API_URL = process.env.REACT_APP_API_URL || 'https://campuscupid.onrender.com';
 const DEFAULT_PROFILE_IMAGE = '/default-profile.jpg';
 
 function MatcherPage() {
