@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"datingapp/database"
 	"datingapp/models"
 	"errors"
@@ -17,12 +18,95 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
+// Helper for consistent error responses
+func respondWithError(c *gin.Context, status int, message string) {
+	c.JSON(status, gin.H{"error": message})
+}
+
+// Helper for input validation
+func validateInput(c *gin.Context, input interface{}) bool {
+	if err := c.ShouldBindJSON(input); err != nil {
+		var validationErrors validator.ValidationErrors
+		if errors.As(err, &validationErrors) {
+			errorMessages := make(map[string]string)
+			for _, e := range validationErrors {
+				errorMessages[e.Field()] = getValidationErrorMsg(e)
+			}
+			c.JSON(http.StatusBadRequest, gin.H{"errors": errorMessages})
+		} else {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		}
+		return false
+	}
+	return true
+}
+
+func getValidationErrorMsg(e validator.FieldError) string {
+	switch e.Tag() {
+	case "required":
+		return "This field is required"
+	case "email":
+		return "Invalid email format"
+	default:
+		return "Invalid value"
+	}
+}
+
+// Helper for authentication check
+func getAuthenticatedUserID(c *gin.Context) (uint, bool) {
+	userIDAny, exists := c.Get("userID")
+	if !exists {
+		respondWithError(c, http.StatusUnauthorized, "Authentication required")
+		return 0, false
+	}
+
+	userID, ok := userIDAny.(uint)
+	if !ok {
+		log.Printf("ERROR: Could not assert userID to uint. Value: %v, Type: %T", userIDAny, userIDAny)
+		respondWithError(c, http.StatusInternalServerError, "Internal server error processing user ID")
+		return 0, false
+	}
+
+	return userID, true
+}
+
+// Helper for pagination
+func getPaginationParams(c *gin.Context) (limit int, offset int) {
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	limit, _ = strconv.Atoi(c.DefaultQuery("limit", "10"))
+	if page < 1 {
+		page = 1
+	}
+	if limit < 1 || limit > 100 {
+		limit = 10 // Default limit with max cap
+	}
+	offset = (page - 1) * limit
+	return limit, offset
+}
+
+// Helper for JWT token generation
+func generateJWTToken(userID uint) (string, error) {
+	jwtSecret := os.Getenv("JWT_SECRET")
+	if jwtSecret == "" {
+		return "", errors.New("JWT_SECRET environment variable is not set")
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"user_id": fmt.Sprintf("%d", userID),
+		"exp":     time.Now().Add(time.Hour * 24).Unix(),
+	})
+
+	return token.SignedString([]byte(jwtSecret))
+}
+
+// Add structured logger
+var logger = log.New(os.Stdout, "[USERS] ", log.LstdFlags)
+
 // Register handles user registration
 func Register(c *gin.Context) {
 	var req models.RegistrationRequest
 
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	if !validateInput(c, &req) {
 		return
 	}
 
@@ -40,16 +124,20 @@ func Register(c *gin.Context) {
 	}
 
 	if err := user.HashPassword(user.Password); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "could not hash password"})
+		respondWithError(c, http.StatusInternalServerError, "Could not hash password")
 		return
 	}
 
-	if err := database.DB.Create(&user).Error; err != nil {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	if err := database.DB.WithContext(ctx).Create(&user).Error; err != nil {
 		if strings.Contains(err.Error(), "duplicate key value violates unique constraint") {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "email already exists"})
+			respondWithError(c, http.StatusBadRequest, "Email already exists")
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "could not create user"})
+		logger.Printf("Failed to create user: %v", err)
+		respondWithError(c, http.StatusInternalServerError, "Could not create user")
 		return
 	}
 
@@ -71,39 +159,28 @@ func Register(c *gin.Context) {
 func Login(c *gin.Context) {
 	var input models.LoginRequest
 
-	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	if !validateInput(c, &input) {
 		return
 	}
 
 	var user models.User
-	if err := database.DB.Where("email = ?", input.Email).First(&user).Error; err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid credentials"})
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	if err := database.DB.WithContext(ctx).Where("email = ?", input.Email).First(&user).Error; err != nil {
+		respondWithError(c, http.StatusUnauthorized, "Invalid credentials")
 		return
 	}
 
 	if err := user.CheckPassword(input.Password); err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid credentials"})
+		respondWithError(c, http.StatusUnauthorized, "Invalid credentials")
 		return
 	}
 
-	// Check if JWT_SECRET is set
-	jwtSecret := os.Getenv("JWT_SECRET")
-	if jwtSecret == "" {
-		fmt.Println("ERROR: JWT_SECRET environment variable is not set")
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal server configuration error"})
-		return
-	}
-
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"user_id": fmt.Sprintf("%d", user.ID),
-		"exp":     time.Now().Add(time.Hour * 24).Unix(),
-	})
-
-	tokenString, err := token.SignedString([]byte(jwtSecret))
+	tokenString, err := generateJWTToken(user.ID)
 	if err != nil {
-		fmt.Println("ERROR: Could not generate token:", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not generate token"})
+		logger.Printf("ERROR: Could not generate token: %v", err)
+		respondWithError(c, http.StatusInternalServerError, "Could not generate token")
 		return
 	}
 
@@ -126,32 +203,31 @@ func Login(c *gin.Context) {
 // @Failure 500 {object} map[string]string
 // @Router /profile/{user_id} [get]
 func GetUserProfile(c *gin.Context) {
-	userID := c.Param("user_id")
-
-	// Get the authenticated user's ID from the context
-	authenticatedUserID, exists := c.Get("userID")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Authentication required"})
+	authenticatedUserID, ok := getAuthenticatedUserID(c)
+	if !ok {
 		return
 	}
 
-	// Convert the parameter to uint for comparison
+	userID := c.Param("user_id")
 	paramUserID, err := strconv.ParseUint(userID, 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
+		respondWithError(c, http.StatusBadRequest, "Invalid user ID")
+		return
+	}
+
+	// Check if the authenticated user is accessing their own profile
+	if uint(paramUserID) != authenticatedUserID {
+		respondWithError(c, http.StatusForbidden, "Access denied: You can only view your own profile")
 		return
 	}
 
 	// Retrieve the user info from the database
 	var user models.User
-	if err := database.DB.Where("id = ?", userID).First(&user).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
-		return
-	}
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
 
-	// Check if the authenticated user is accessing their own profile
-	if uint(paramUserID) != authenticatedUserID.(uint) {
-		c.JSON(http.StatusForbidden, gin.H{"error": "Access denied: You can only view your own profile"})
+	if err := database.DB.WithContext(ctx).Where("id = ?", userID).First(&user).Error; err != nil {
+		respondWithError(c, http.StatusNotFound, "User not found")
 		return
 	}
 
@@ -192,38 +268,36 @@ func GetUserProfile(c *gin.Context) {
 // @Failure 500 {object} map[string]string
 // @Router /profile/{user_id} [put]
 func UpdateUserProfile(c *gin.Context) {
-	userID := c.Param("user_id")
-
-	// Get the authenticated user's ID from the context
-	authenticatedUserID, exists := c.Get("userID")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Authentication required"})
+	authenticatedUserID, ok := getAuthenticatedUserID(c)
+	if !ok {
 		return
 	}
 
-	// Convert the parameter to uint for comparison
+	userID := c.Param("user_id")
 	paramUserID, err := strconv.ParseUint(userID, 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
+		respondWithError(c, http.StatusBadRequest, "Invalid user ID")
+		return
+	}
+
+	// Check if the authenticated user is updating their own profile
+	if uint(paramUserID) != authenticatedUserID {
+		respondWithError(c, http.StatusForbidden, "Access denied: You can only update your own profile")
 		return
 	}
 
 	// Retrieve user from database
 	var user models.User
-	if err := database.DB.Where("id = ?", userID).First(&user).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
-		return
-	}
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
 
-	// Check if the authenticated user is updating their own profile
-	if uint(paramUserID) != authenticatedUserID.(uint) {
-		c.JSON(http.StatusForbidden, gin.H{"error": "Access denied: You can only update your own profile"})
+	if err := database.DB.WithContext(ctx).Where("id = ?", userID).First(&user).Error; err != nil {
+		respondWithError(c, http.StatusNotFound, "User not found")
 		return
 	}
 
 	var updateData models.UpdateProfileRequest
-	if err := c.ShouldBindJSON(&updateData); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	if !validateInput(c, &updateData) {
 		return
 	}
 
@@ -297,8 +371,9 @@ func UpdateUserProfile(c *gin.Context) {
 		user.GenderPreference = updateData.GenderPreference
 	}
 
-	if err := database.DB.Save(&user).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not update profile"})
+	if err := database.DB.WithContext(ctx).Save(&user).Error; err != nil {
+		logger.Printf("Failed to update profile for user %d: %v", authenticatedUserID, err)
+		respondWithError(c, http.StatusInternalServerError, "Could not update profile")
 		return
 	}
 
@@ -438,71 +513,62 @@ func UpdateUserPreferences(c *gin.Context) {
 // @Failure 500 {object} map[string]string
 // @Router /matches/{user_id} [get]
 func GetMatches(c *gin.Context) {
+	authenticatedUserID, ok := getAuthenticatedUserID(c)
+	if !ok {
+		return
+	}
+
 	userID := c.Param("user_id")
 	matchedOnly := c.Query("matched") == "true"
 
-	authenticatedUserIDAny, exists := c.Get("userID")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Authentication required"})
-		return
-	}
-	authenticatedUserID, ok := authenticatedUserIDAny.(uint)
-	if !ok {
-		log.Printf("ERROR: Could not assert authenticatedUserID to uint in GetMatches. Value: %v, Type: %T", authenticatedUserIDAny, authenticatedUserIDAny)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal server error processing user ID"})
+	paramUserID, err := strconv.ParseUint(userID, 10, 32)
+	if err != nil {
+		respondWithError(c, http.StatusBadRequest, "Invalid user ID")
 		return
 	}
 
-	paramUserID, err := strconv.ParseUint(userID, 10, 32)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
+	// Check permissions
+	if uint(paramUserID) != authenticatedUserID {
+		respondWithError(c, http.StatusForbidden, "Access denied")
 		return
 	}
 
 	var user models.User
-	if err := database.DB.Where("id = ?", paramUserID).First(&user).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
-		return
-	}
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
 
-	// Check permissions after confirming user exists
-	if uint(paramUserID) != authenticatedUserID {
-		c.JSON(http.StatusForbidden, gin.H{"error": "Access denied"})
+	if err := database.DB.WithContext(ctx).Where("id = ?", paramUserID).First(&user).Error; err != nil {
+		respondWithError(c, http.StatusNotFound, "User not found")
 		return
 	}
 
 	// Pagination parameters
-	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
-	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "50"))
-	offset := (page - 1) * limit
+	limit, offset := getPaginationParams(c)
 
 	var matches []models.User
 
 	if matchedOnly {
-		// Get users who have mutual matches with the current user
-		var matchedUserIDs []uint
-		if err := database.DB.Model(&models.Interaction{}).
-			Where("user_id = ? AND matched = true", paramUserID).
-			Pluck("target_id", &matchedUserIDs).Error; err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve matches"})
-			return
-		}
+		// Get users who have mutual matches with the current user using a more efficient query
+		subQuery := database.DB.Model(&models.Interaction{}).
+			Select("target_id").
+			Where("user_id = ? AND matched = true", paramUserID)
 
-		if len(matchedUserIDs) > 0 {
-			if err := database.DB.Where("id IN ?", matchedUserIDs).
-				Limit(limit).Offset(offset).
-				Find(&matches).Error; err != nil {
-				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve matched users"})
-				return
-			}
+		if err := database.DB.WithContext(ctx).Model(&models.User{}).
+			Where("id IN (?)", subQuery).
+			Limit(limit).Offset(offset).
+			Find(&matches).Error; err != nil {
+			logger.Printf("Failed to retrieve matched users: %v", err)
+			respondWithError(c, http.StatusInternalServerError, "Failed to retrieve matched users")
+			return
 		}
 	} else {
 		// Get list of users current user has already interacted with
 		var interactedUserIDs []uint
-		if err := database.DB.Model(&models.Interaction{}).
+		if err := database.DB.WithContext(ctx).Model(&models.Interaction{}).
 			Where("user_id = ?", paramUserID).
 			Pluck("target_id", &interactedUserIDs).Error; err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve interaction history"})
+			logger.Printf("Failed to retrieve interaction history: %v", err)
+			respondWithError(c, http.StatusInternalServerError, "Failed to retrieve interaction history")
 			return
 		}
 
@@ -510,7 +576,12 @@ func GetMatches(c *gin.Context) {
 		excludedIDs := append([]uint{authenticatedUserID}, user.BlockedUsers...)
 		excludedIDs = append(excludedIDs, interactedUserIDs...)
 
-		query := database.DB.Model(&models.User{}).Where("id NOT IN ?", excludedIDs)
+		// Ensure we have at least one ID to exclude to avoid SQL error
+		if len(excludedIDs) == 0 {
+			excludedIDs = append(excludedIDs, 0) // Add impossible ID 0
+		}
+
+		query := database.DB.WithContext(ctx).Model(&models.User{}).Where("id NOT IN ?", excludedIDs)
 
 		// Apply gender preference filter if specified
 		if user.GenderPreference != "" && user.GenderPreference != "All" {
@@ -533,7 +604,8 @@ func GetMatches(c *gin.Context) {
 		}
 
 		if err := query.Limit(limit).Offset(offset).Find(&matches).Error; err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve potential matches"})
+			logger.Printf("Failed to retrieve potential matches: %v", err)
+			respondWithError(c, http.StatusInternalServerError, "Failed to retrieve potential matches")
 			return
 		}
 	}
@@ -835,10 +907,8 @@ func GetConversations(c *gin.Context) {
 // @Failure 500 {object} map[string]string
 // @Router /like/{target_id} [post]
 func LikeUser(c *gin.Context) {
-	// Get the current user's ID from the context
-	userID, exists := c.Get("userID")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Authentication required"})
+	userID, ok := getAuthenticatedUserID(c)
+	if !ok {
 		return
 	}
 
@@ -846,29 +916,38 @@ func LikeUser(c *gin.Context) {
 	targetID := c.Param("target_id")
 	targetIDUint, err := strconv.ParseUint(targetID, 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid target ID"})
+		respondWithError(c, http.StatusBadRequest, "Invalid target ID")
 		return
 	}
 
 	// Check if the target user exists
 	var targetUser models.User
 	if err := database.DB.Where("id = ?", targetIDUint).First(&targetUser).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Target user not found"})
+		respondWithError(c, http.StatusNotFound, "Target user not found")
 		return
 	}
 
+	// Start a transaction
+	tx := database.DB.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
 	// Check if an interaction already exists
 	var existingInteraction models.Interaction
-	interactionExists := database.DB.Where("user_id = ? AND target_id = ?", userID, targetIDUint).First(&existingInteraction).Error == nil
+	interactionExists := tx.Where("user_id = ? AND target_id = ?", userID, targetIDUint).First(&existingInteraction).Error == nil
 
 	if interactionExists {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "You have already interacted with this user"})
+		tx.Rollback()
+		respondWithError(c, http.StatusBadRequest, "You have already interacted with this user")
 		return
 	}
 
 	// Create the new interaction (like)
 	interaction := models.Interaction{
-		UserID:    userID.(uint),
+		UserID:    userID,
 		TargetID:  uint(targetIDUint),
 		Liked:     true,
 		Matched:   false,
@@ -877,21 +956,32 @@ func LikeUser(c *gin.Context) {
 
 	// Check if the target user has already liked the current user
 	var targetInteraction models.Interaction
-	isMatch := database.DB.Where("user_id = ? AND target_id = ? AND liked = ?", targetIDUint, userID, true).First(&targetInteraction).Error == nil
+	isMatch := tx.Where("user_id = ? AND target_id = ? AND liked = ?", targetIDUint, userID, true).First(&targetInteraction).Error == nil
 
 	if isMatch {
 		// It's a match! Update both interactions
 		interaction.Matched = true
 
-		if err := database.DB.Model(&targetInteraction).Update("matched", true).Error; err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update target interaction"})
+		if err := tx.Model(&targetInteraction).Update("matched", true).Error; err != nil {
+			tx.Rollback()
+			logger.Printf("Failed to update target interaction: %v", err)
+			respondWithError(c, http.StatusInternalServerError, "Failed to update target interaction")
 			return
 		}
 	}
 
 	// Save the new interaction
-	if err := database.DB.Create(&interaction).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to record like"})
+	if err := tx.Create(&interaction).Error; err != nil {
+		tx.Rollback()
+		logger.Printf("Failed to record like: %v", err)
+		respondWithError(c, http.StatusInternalServerError, "Failed to record like")
+		return
+	}
+
+	// Commit the transaction
+	if err := tx.Commit().Error; err != nil {
+		logger.Printf("Failed to commit transaction: %v", err)
+		respondWithError(c, http.StatusInternalServerError, "Failed to complete operation")
 		return
 	}
 
