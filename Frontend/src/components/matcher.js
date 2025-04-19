@@ -69,9 +69,9 @@ function MatcherPage() {
           navigate('/login');
           return;
         }
-        
-        // Fetch potential matches using the correct API endpoint
-        const response = await axios.get(`${API_URL}/matches/${userId}`, {
+            // Fetch potential matches using the correct API endpoint
+        // matched=false means we want potential matches, not existing matches
+        const response = await axios.get(`${API_URL}/matches/${userId}?matched=false`, {
           headers: { Authorization: `Bearer ${token}` }
         });
         

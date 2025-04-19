@@ -439,6 +439,8 @@ func UpdateUserPreferences(c *gin.Context) {
 // @Router /matches/{user_id} [get]
 func GetMatches(c *gin.Context) {
 	userID := c.Param("user_id")
+	matchedOnly := c.Query("matched") == "true"
+
 	authenticatedUserIDAny, exists := c.Get("userID")
 	if !exists {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Authentication required"})
@@ -474,90 +476,69 @@ func GetMatches(c *gin.Context) {
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "50"))
 	offset := (page - 1) * limit
 
-	log.Printf("GetMatches (DEBUG MODE): Fetching all users for user %d (excluding self and blocked)", authenticatedUserID)
-
-	// --- TEMPORARY MODIFICATION: Show all users except self and blocked ---
-	excludedIDs := []uint{authenticatedUserID} // Start with excluding self
-	if len(user.BlockedUsers) > 0 {
-		excludedIDs = append(excludedIDs, user.BlockedUsers...)
-		log.Printf("GetMatches (DEBUG MODE): Excluding blocked users: %v", user.BlockedUsers)
-	}
-
-	query := database.DB.Model(&models.User{}).Where("id NOT IN ?", excludedIDs)
-
-	/* --- ORIGINAL FILTERING LOGIC (COMMENTED OUT FOR DEBUGGING) ---
-	// Get list of users current user has already interacted with
-	var interactedUserIDs []uint
-	if err := database.DB.Model(&models.Interaction{}).
-		Where("user_id = ?", paramUserID).
-		Pluck("target_id", &interactedUserIDs).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve interaction history"})
-		return
-	}
-
-	// Add current user's ID to the list of excluded IDs
-	excludedIDs := append(interactedUserIDs, uint(paramUserID))
-
-	// Start building the query with basic exclusions
-	query := database.DB.Model(&models.User{}).Where("id NOT IN ?", excludedIDs)
-
-	// Apply gender preference filter if specified
-	if user.GenderPreference != "" && user.GenderPreference != "All" {
-		query = query.Where("gender = ?", user.GenderPreference)
-	}
-
-	// Apply age range filter if specified
-	if user.AgeRange != "" {
-		ageRangeParts := strings.Split(user.AgeRange, "-")
-		if len(ageRangeParts) == 2 {
-			minAge, minErr := strconv.Atoi(ageRangeParts[0])
-			maxAge, maxErr := strconv.Atoi(ageRangeParts[1])
-
-			if minErr == nil && maxErr == nil {
-				// Calculate date range for the age filter
-				maxDOB := time.Now().AddDate(-minAge, 0, 0).Format("2006-01-02")
-				minDOB := time.Now().AddDate(-maxAge-1, 0, 0).Format("2006-01-02")
-
-				query = query.Where("date_of_birth <= ? AND date_of_birth >= ?", maxDOB, minDOB)
-			}
-		}
-	}
-
-	// Filter out blocked users
-	if len(user.BlockedUsers) > 0 {
-		query = query.Where("id NOT IN ?", user.BlockedUsers)
-	}
-	--- END OF ORIGINAL FILTERING LOGIC --- */
-
-	// Get the matches
 	var matches []models.User
-	if err := query.Limit(limit).Offset(offset).Find(&matches).Error; err != nil {
-		log.Printf("ERROR: Failed to retrieve matches (DEBUG MODE) for user %d: %v", authenticatedUserID, err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve matches"})
-		return
-	}
 
-	log.Printf("GetMatches (DEBUG MODE): Found %d potential matches for user %d", len(matches), authenticatedUserID)
-
-	/* --- ORIGINAL RELAXED CRITERIA LOGIC (COMMENTED OUT FOR DEBUGGING) ---
-	// If no matches found with strict criteria, relax the criteria
-	if len(matches) == 0 {
-		// Reset query to just exclude users already interacted with and self
-		query = database.DB.Model(&models.User{}).Where("id NOT IN ?", excludedIDs)
-
-		// Filter out blocked users
-		if len(user.BlockedUsers) > 0 {
-			query = query.Where("id NOT IN ?", user.BlockedUsers)
-		}
-
-		if err := query.Limit(limit).Offset(offset).Find(&matches).Error; err != nil {
+	if matchedOnly {
+		// Get users who have mutual matches with the current user
+		var matchedUserIDs []uint
+		if err := database.DB.Model(&models.Interaction{}).
+			Where("user_id = ? AND matched = true", paramUserID).
+			Pluck("target_id", &matchedUserIDs).Error; err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve matches"})
 			return
 		}
-	}
-	--- END OF ORIGINAL RELAXED CRITERIA LOGIC --- */
 
-	// Make sure we're not returning sensitive information
+		if len(matchedUserIDs) > 0 {
+			if err := database.DB.Where("id IN ?", matchedUserIDs).
+				Limit(limit).Offset(offset).
+				Find(&matches).Error; err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve matched users"})
+				return
+			}
+		}
+	} else {
+		// Get list of users current user has already interacted with
+		var interactedUserIDs []uint
+		if err := database.DB.Model(&models.Interaction{}).
+			Where("user_id = ?", paramUserID).
+			Pluck("target_id", &interactedUserIDs).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve interaction history"})
+			return
+		}
+
+		// Exclude self, blocked users, and already interacted users
+		excludedIDs := append([]uint{authenticatedUserID}, user.BlockedUsers...)
+		excludedIDs = append(excludedIDs, interactedUserIDs...)
+
+		query := database.DB.Model(&models.User{}).Where("id NOT IN ?", excludedIDs)
+
+		// Apply gender preference filter if specified
+		if user.GenderPreference != "" && user.GenderPreference != "All" {
+			query = query.Where("gender = ?", user.GenderPreference)
+		}
+
+		// Apply age range filter if specified
+		if user.AgeRange != "" {
+			ageRangeParts := strings.Split(user.AgeRange, "-")
+			if len(ageRangeParts) == 2 {
+				minAge, minErr := strconv.Atoi(ageRangeParts[0])
+				maxAge, maxErr := strconv.Atoi(ageRangeParts[1])
+
+				if minErr == nil && maxErr == nil {
+					maxDOB := time.Now().AddDate(-minAge, 0, 0).Format("2006-01-02")
+					minDOB := time.Now().AddDate(-maxAge-1, 0, 0).Format("2006-01-02")
+					query = query.Where("date_of_birth <= ? AND date_of_birth >= ?", maxDOB, minDOB)
+				}
+			}
+		}
+
+		if err := query.Limit(limit).Offset(offset).Find(&matches).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve potential matches"})
+			return
+		}
+	}
+
+	// Sanitize the response
 	var sanitizedMatches []gin.H
 	for _, match := range matches {
 		sanitizedMatches = append(sanitizedMatches, gin.H{
