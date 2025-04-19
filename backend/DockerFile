@@ -1,29 +1,28 @@
-# Use the official Golang image
-FROM golang:1.21-alpine
+# Use Go base image
+FROM golang:1.21 as build
 
-# Install swag CLI
-RUN go install github.com/swaggo/swag/cmd/swag@latest
-
-# Set the working directory
+# Set working directory
 WORKDIR /app
 
-# Copy the Go module files
+# Copy go mod and sum files
 COPY go.mod go.sum ./
-
-# Download dependencies
 RUN go mod download
 
-# Copy the rest of the code
+# Copy all files
 COPY . .
 
-# Generate Swagger docs
-RUN swag init
-
-# Build the Go application
+# Build the Go app
 RUN go build -o main .
 
-# Expose the port your app runs on
+# Final image
+FROM golang:1.21
+
+WORKDIR /app
+
+COPY --from=build /app/main .
+
+# 🔥 This is key!
 EXPOSE 8080
 
-# Run the application
+# 🔥 This tells Render how to run the app
 CMD ["./main"]
