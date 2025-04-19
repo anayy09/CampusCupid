@@ -144,6 +144,11 @@ func Register(c *gin.Context) {
 		respondWithError(c, http.StatusInternalServerError, fmt.Sprintf("Database error checking email: %v", err))
 		return
 	}
+	// Set up profile picture URL from the first photo if available
+	var profilePictureURL string
+	if len(req.Photos) > 0 {
+		profilePictureURL = req.Photos[0]
+	}
 
 	user := models.User{
 		FirstName: req.FirstName,
@@ -155,8 +160,10 @@ func Register(c *gin.Context) {
 		LookingFor:        req.LookingFor,
 		Interests:         req.Interests,
 		SexualOrientation: req.SexualOrientation,
-		Photos:            req.Photos, // Photos are now expected to be URLs from the upload endpoint
-		// Initialize other fields like location if needed from req
+		Photos:            req.Photos,        // Photos are now expected to be URLs from the upload endpoint
+		ProfilePictureURL: profilePictureURL, // Set the profile picture URL to the first photo
+		Latitude:          req.Latitude,
+		Longitude:         req.Longitude,
 	}
 
 	// Hash the password

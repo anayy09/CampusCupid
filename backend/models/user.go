@@ -87,6 +87,9 @@ type RegistrationRequest struct {
 	Interests         []string `json:"interests" binding:"required"`
 	SexualOrientation string   `json:"sexualOrientation"`
 	Photos            []string `json:"photos" binding:"required,minphotos"`
+	ProfilePictureURL string   `json:"profilePictureURL"`
+	Latitude          float64  `json:"latitude"`
+	Longitude         float64  `json:"longitude"`
 }
 
 // LoginRequest defines the structure for user login data
