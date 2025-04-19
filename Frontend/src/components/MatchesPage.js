@@ -231,13 +231,11 @@ function MatchesPage() {
       };
       
       setMessages([...messages, tempMessage]);
-      setNewMessage('');
-
-      // Send message to server
+      setNewMessage('');      // Send message to server
       const response = await axios.post(
         `${API_URL}/messages`,
         {
-          receiverID: selectedMatch.id,
+          receiver_id: selectedMatch.id,
           content: newMessage
         },
         {

@@ -5,6 +5,7 @@ import (
 	"datingapp/models"
 	"errors"
 	"fmt"
+	"log" // Import the log package
 	"net/http"
 	"os"
 	"strconv"
@@ -423,8 +424,8 @@ func UpdateUserPreferences(c *gin.Context) {
 }
 
 // GetMatches retrieves potential matches for a user
-// @Summary Get potential matches
-// @Description Retrieve a list of potential matches based on user preferences
+// @Summary Get potential matches (TEMPORARILY MODIFIED FOR DEBUGGING - SHOWS ALL USERS)
+// @Description Retrieve a list of potential matches based on user preferences (Temporarily shows all users except self and blocked)
 // @Tags matchmaking
 // @Accept json
 // @Produce json
@@ -438,9 +439,15 @@ func UpdateUserPreferences(c *gin.Context) {
 // @Router /matches/{user_id} [get]
 func GetMatches(c *gin.Context) {
 	userID := c.Param("user_id")
-	authenticatedUserID, exists := c.Get("userID")
+	authenticatedUserIDAny, exists := c.Get("userID")
 	if !exists {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Authentication required"})
+		return
+	}
+	authenticatedUserID, ok := authenticatedUserIDAny.(uint)
+	if !ok {
+		log.Printf("ERROR: Could not assert authenticatedUserID to uint in GetMatches. Value: %v, Type: %T", authenticatedUserIDAny, authenticatedUserIDAny)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal server error processing user ID"})
 		return
 	}
 
@@ -457,16 +464,28 @@ func GetMatches(c *gin.Context) {
 	}
 
 	// Check permissions after confirming user exists
-	if uint(paramUserID) != authenticatedUserID.(uint) {
+	if uint(paramUserID) != authenticatedUserID {
 		c.JSON(http.StatusForbidden, gin.H{"error": "Access denied"})
 		return
 	}
 
 	// Pagination parameters
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
-	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
+	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "50"))
 	offset := (page - 1) * limit
 
+	log.Printf("GetMatches (DEBUG MODE): Fetching all users for user %d (excluding self and blocked)", authenticatedUserID)
+
+	// --- TEMPORARY MODIFICATION: Show all users except self and blocked ---
+	excludedIDs := []uint{authenticatedUserID} // Start with excluding self
+	if len(user.BlockedUsers) > 0 {
+		excludedIDs = append(excludedIDs, user.BlockedUsers...)
+		log.Printf("GetMatches (DEBUG MODE): Excluding blocked users: %v", user.BlockedUsers)
+	}
+
+	query := database.DB.Model(&models.User{}).Where("id NOT IN ?", excludedIDs)
+
+	/* --- ORIGINAL FILTERING LOGIC (COMMENTED OUT FOR DEBUGGING) ---
 	// Get list of users current user has already interacted with
 	var interactedUserIDs []uint
 	if err := database.DB.Model(&models.Interaction{}).
@@ -508,14 +527,19 @@ func GetMatches(c *gin.Context) {
 	if len(user.BlockedUsers) > 0 {
 		query = query.Where("id NOT IN ?", user.BlockedUsers)
 	}
+	--- END OF ORIGINAL FILTERING LOGIC --- */
 
 	// Get the matches
 	var matches []models.User
 	if err := query.Limit(limit).Offset(offset).Find(&matches).Error; err != nil {
+		log.Printf("ERROR: Failed to retrieve matches (DEBUG MODE) for user %d: %v", authenticatedUserID, err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve matches"})
 		return
 	}
 
+	log.Printf("GetMatches (DEBUG MODE): Found %d potential matches for user %d", len(matches), authenticatedUserID)
+
+	/* --- ORIGINAL RELAXED CRITERIA LOGIC (COMMENTED OUT FOR DEBUGGING) ---
 	// If no matches found with strict criteria, relax the criteria
 	if len(matches) == 0 {
 		// Reset query to just exclude users already interacted with and self
@@ -531,6 +555,7 @@ func GetMatches(c *gin.Context) {
 			return
 		}
 	}
+	--- END OF ORIGINAL RELAXED CRITERIA LOGIC --- */
 
 	// Make sure we're not returning sensitive information
 	var sanitizedMatches []gin.H
@@ -645,26 +670,52 @@ func SendMessage(c *gin.Context) {
 // @Router /messages/{user_id} [get]
 func GetMessages(c *gin.Context) {
 	// Get the current user's ID from the context
-	currentUserID, exists := c.Get("userID")
+	currentUserIDAny, exists := c.Get("userID")
 	if !exists {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Authentication required"})
 		return
 	}
-
-	// Get the other user's ID from the URL parameter
-	otherUserID := c.Param("user_id")
-	otherUserIDUint, err := strconv.ParseUint(otherUserID, 10, 32)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
+	// Type assertion to uint
+	currentUserID, ok := currentUserIDAny.(uint)
+	if !ok {
+		log.Printf("ERROR: Could not assert currentUserID to uint. Value: %v, Type: %T", currentUserIDAny, currentUserIDAny)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal server error processing user ID"})
 		return
 	}
 
-	// Check if users are matched
-	var interaction models.Interaction
-	matchExists := database.DB.Where("(user_id = ? AND target_id = ? AND matched = ?) OR (user_id = ? AND target_id = ? AND matched = ?)",
-		currentUserID, otherUserIDUint, true, otherUserIDUint, currentUserID, true).First(&interaction).Error == nil
+	// Get the other user's ID from the URL parameter
+	otherUserIDStr := c.Param("user_id")
+	otherUserIDUint64, err := strconv.ParseUint(otherUserIDStr, 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID format"})
+		return
+	}
+	otherUserIDUint := uint(otherUserIDUint64) // Convert to uint
+
+	log.Printf("GetMessages: Attempting to fetch messages between User %d and User %d", currentUserID, otherUserIDUint)
+
+	// Check if users are matched (Revised Check)
+	var interactionCount int64
+	query := database.DB.Model(&models.Interaction{}).Where(
+		"((user_id = ? AND target_id = ?) OR (user_id = ? AND target_id = ?)) AND matched = ?",
+		currentUserID, otherUserIDUint, // User A -> User B
+		otherUserIDUint, currentUserID, // User B -> User A
+		true, // matched = true
+	)
+
+	result := query.Count(&interactionCount)
+	if result.Error != nil {
+		log.Printf("ERROR: Database error checking match: %v", result.Error)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Database error checking match status"})
+		return
+	}
+
+	matchExists := interactionCount > 0
+
+	log.Printf("GetMessages: Match check between User %d and User %d. Interaction count: %d, Match exists: %t", currentUserID, otherUserIDUint, interactionCount, matchExists)
 
 	if !matchExists {
+		log.Printf("GetMessages: Access Denied. No match found between User %d and User %d.", currentUserID, otherUserIDUint)
 		c.JSON(http.StatusForbidden, gin.H{"error": "You can only view messages with users you have matched with"})
 		return
 	}
@@ -680,6 +731,7 @@ func GetMessages(c *gin.Context) {
 		"(sender_id = ? AND receiver_id = ?) OR (sender_id = ? AND receiver_id = ?)",
 		currentUserID, otherUserIDUint, otherUserIDUint, currentUserID,
 	).Order("created_at DESC").Limit(limit).Offset(offset).Find(&messages).Error; err != nil {
+		log.Printf("ERROR: Failed to retrieve messages for users %d and %d: %v", currentUserID, otherUserIDUint, err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve messages"})
 		return
 	}
