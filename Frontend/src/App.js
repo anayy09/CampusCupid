@@ -6,23 +6,29 @@ import SignUpPage from './components/SignUpPage';
 import MatcherPage from "./components/matcher";
 import DashboardPage from "./components/Dashboard";
 import MatchesPage from "./components/MatchesPage";
+import SettingsPage from "./components/SettingsPage";
+import ThemeProvider from "./components/common/ThemeProvider";
+import { CssBaseline } from "@mui/material";
 
 function App() {
   return (
-    <Router>
-      <Routes>
-         {/* Route for Home Page */}
-        <Route path="/" element={<LandingPage />} />
-         {/* Route for Login Page */}
-        <Route path="/login" element={<LoginPage />} />
-         {/* Route for Signup Page */}
-        <Route path="/signup" element={<SignUpPage />} />
-         {/* Route for Dashboard Page */}
-         <Route path="/dashboard" element={<DashboardPage />} />
-        <Route path="/matcher" element={<MatcherPage />} />
-        <Route path="/matches" element={<MatchesPage />} />
-      </Routes>
-    </Router>
+    <ThemeProvider>
+      <CssBaseline />
+      <Router>
+        <Routes>
+          {/* Public Routes */}
+          <Route path="/" element={<LandingPage />} />
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/signup" element={<SignUpPage />} />
+          
+          {/* Protected Routes */}
+          <Route path="/dashboard" element={<DashboardPage />} />
+          <Route path="/matcher" element={<MatcherPage />} />
+          <Route path="/matches" element={<MatchesPage />} />
+          <Route path="/settings" element={<SettingsPage />} />
+        </Routes>
+      </Router>
+    </ThemeProvider>
   );
 }
 

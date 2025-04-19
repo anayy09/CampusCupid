@@ -7,14 +7,16 @@ import {
   Avatar, 
   Grid, 
   Button, 
-  ThemeProvider, 
-  createTheme,
   Card,
   CardContent,
   IconButton,
   Snackbar,
   Alert,
-  Stack
+  Stack,
+  CircularProgress,
+  Tabs,
+  Tab,
+  Chip
 } from '@mui/material';
 import { 
   Edit as EditIcon, 
@@ -22,32 +24,12 @@ import {
   Favorite as MatchIcon,
   Chat as ChatIcon,
   Settings as SettingsIcon,
-  Logout as LogoutIcon
+  PhotoLibrary as GalleryIcon,
+  LocationOn as LocationIcon
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-
-const theme = createTheme({
-  palette: {
-    primary: {
-      main: '#FE3C72', 
-      light: '#FF7A9C',
-      dark: '#E31C5F',
-    },
-    secondary: {
-      main: '#FF6036', 
-    },
-    background: {
-      default: '#F8F8F8',
-    },
-  },
-  typography: {
-    fontFamily: '"Gotham SSm", "Helvetica Neue", sans-serif',
-  },
-  shape: {
-    borderRadius: 8,
-  },
-});
+import NavBar from './common/NavBar';
 
 const API_URL = process.env.REACT_APP_API_URL || 'https://campuscupid-backend.onrender.com';
 const DEFAULT_PROFILE_IMAGE = '/default-profile.jpg';
@@ -120,21 +102,29 @@ function DashboardPage() {
   const handleViewMatches = () => {
     navigate('/matches');
   };
-
   if (loading) {
     return (
-      <ThemeProvider theme={theme}>
-        <Container sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
-          <Typography variant="h6">Loading...</Typography>
-        </Container>
-      </ThemeProvider>
+      <>
+        <NavBar user={null} />
+        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+          <CircularProgress color="primary" />
+        </Box>
+      </>
     );
   }
 
   return (
-    <ThemeProvider theme={theme}>
-      <Container maxWidth="md" sx={{ py: 4, backgroundColor: 'background.default', minHeight: '100vh' }}>
-        <Paper elevation={3} sx={{ p: 4, borderRadius: 3 }}>
+    <>
+      <NavBar user={user} />
+      <Container maxWidth="md" sx={{ pt: 10, pb: 4, backgroundColor: 'background.default', minHeight: '100vh' }}>
+        <Paper elevation={3} sx={{ 
+          p: 4, 
+          borderRadius: 3,
+          transition: 'transform 0.3s ease, box-shadow 0.3s ease',
+          '&:hover': {
+            boxShadow: '0 8px 24px rgba(0, 0, 0, 0.12)',
+          }
+        }}>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
             <Typography 
               variant="h4" 
@@ -147,52 +137,171 @@ function DashboardPage() {
             >
               My Profile
             </Typography>
-            <IconButton onClick={handleLogout} color="primary">
-              <LogoutIcon />
-            </IconButton>
-          </Box>
-
-          <Grid container spacing={3}>
+          </Box>          <Grid container spacing={3}>
             <Grid item xs={12} md={4}>
-              <Avatar
-                alt={user?.firstName}
-                src={user?.profilePictureURL || DEFAULT_PROFILE_IMAGE}
-                sx={{ 
-                  width: 200, 
-                  height: 200, 
-                  margin: 'auto',
-                  border: '4px solid #FE3C72'
-                }}
-              />
-              {user?.photos && user.photos.length > 0 && (
-                <Box sx={{ mt: 2, textAlign: 'center' }}>
-                  <Typography variant="body2" color="textSecondary">
-                    Additional Photos: {user.photos.length}
-                  </Typography>
-                </Box>
-              )}
+              <Box sx={{ 
+                display: 'flex', 
+                flexDirection: 'column', 
+                alignItems: 'center', 
+                position: 'relative'
+              }}>
+                <Avatar
+                  alt={user?.firstName}
+                  src={user?.profilePictureURL || DEFAULT_PROFILE_IMAGE}
+                  sx={{ 
+                    width: 200, 
+                    height: 200, 
+                    margin: 'auto',
+                    border: '4px solid #FE3C72',
+                    boxShadow: '0 8px 20px rgba(254, 60, 114, 0.25)',
+                    transition: 'transform 0.3s ease, box-shadow 0.3s ease',
+                    '&:hover': {
+                      transform: 'scale(1.05)',
+                      boxShadow: '0 12px 28px rgba(254, 60, 114, 0.3)',
+                    }
+                  }}
+                />
+                {/* Photo gallery indicator */}
+                {user?.photos && user.photos.length > 0 && (
+                  <Box 
+                    sx={{ 
+                      mt: 2, 
+                      display: 'flex', 
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 1
+                    }}
+                  >
+                    <GalleryIcon color="primary" fontSize="small" />
+                    <Typography 
+                      variant="body2" 
+                      sx={{ 
+                        color: 'primary.main', 
+                        fontWeight: 500,
+                        cursor: 'pointer',
+                        '&:hover': {
+                          textDecoration: 'underline'
+                        }
+                      }}
+                    >
+                      {user.photos.length} {user.photos.length === 1 ? 'Photo' : 'Photos'}
+                    </Typography>
+                  </Box>
+                )}
+                
+                {/* Location indicator */}
+                {user?.location?.city && (
+                  <Box 
+                    sx={{ 
+                      mt: 1, 
+                      display: 'flex', 
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 0.5
+                    }}
+                  >
+                    <LocationIcon color="action" fontSize="small" />
+                    <Typography variant="body2" color="text.secondary">
+                      {user?.location?.city}, {user?.location?.country || ''}
+                    </Typography>
+                  </Box>
+                )}
+              </Box>
             </Grid>
             <Grid item xs={12} md={8}>
-              <Typography variant="h5" gutterBottom>
-                {user?.firstName}, {calculateAge(user?.dateOfBirth)}
+              <Typography 
+                variant="h4" 
+                sx={{ 
+                  fontWeight: 600, 
+                  mb: 1,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 1
+                }}
+              >
+                {user?.firstName}, <Typography component="span" color="primary.main">{calculateAge(user?.dateOfBirth)}</Typography>
               </Typography>
-              <Typography variant="body1" color="textSecondary" paragraph>
-                {user?.bio || 'No bio available'}
-              </Typography>
-              <Typography variant="body2" color="textSecondary">
-                Looking for: {user?.lookingFor || 'Not specified'}
-                <br />
-                Interested in: {user?.interestedIn || 'Not specified'}
-                <br />
-                Sexual Orientation: {user?.sexualOrientation || 'Not specified'}
-              </Typography>
-              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} mt={2}>
+              
+              {/* User interests as chips */}
+              {user?.interests && user.interests.length > 0 && (
+                <Box sx={{ mb: 2, mt: 1, display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                  {user.interests.map((interest, index) => (
+                    <Chip 
+                      key={index}
+                      label={interest}
+                      size="small"
+                      sx={{ 
+                        backgroundColor: 'rgba(254, 60, 114, 0.08)',
+                        color: 'primary.main',
+                        fontWeight: 500
+                      }}
+                    />
+                  ))}
+                </Box>
+              )}
+              
+              <Paper
+                elevation={0}
+                sx={{ 
+                  p: 2, 
+                  mb: 2,
+                  backgroundColor: 'rgba(0, 0, 0, 0.02)',
+                  borderRadius: 2,
+                  border: '1px solid rgba(0, 0, 0, 0.05)'
+                }}
+              >
+                <Typography 
+                  variant="body1" 
+                  paragraph
+                  sx={{
+                    fontStyle: user?.bio ? 'normal' : 'italic',
+                    color: user?.bio ? 'text.primary' : 'text.secondary',
+                    mb: 0
+                  }}
+                >
+                  {user?.bio || 'No bio available'}
+                </Typography>
+              </Paper>
+              
+              <Grid container spacing={2} sx={{ mb: 2 }}>
+                <Grid item xs={4}>
+                  <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500 }}>
+                    Looking for:
+                  </Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                    {user?.lookingFor || 'Not specified'}
+                  </Typography>
+                </Grid>
+                <Grid item xs={4}>
+                  <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500 }}>
+                    Interested in:
+                  </Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                    {user?.interestedIn || 'Not specified'}
+                  </Typography>
+                </Grid>
+                <Grid item xs={4}>
+                  <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500 }}>
+                    Orientation:
+                  </Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                    {user?.sexualOrientation || 'Not specified'}
+                  </Typography>
+                </Grid>
+              </Grid><Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} mt={2}>
                 <Button 
                   variant="contained" 
                   startIcon={<EditIcon />}
                   sx={{
                     background: 'linear-gradient(45deg, #FE3C72 30%, #FF6036 90%)',
-                    textTransform: 'none'
+                    textTransform: 'none',
+                    boxShadow: '0 4px 10px rgba(254, 60, 114, 0.25)',
+                    '&:hover': {
+                      background: 'linear-gradient(45deg, #E31C5F 30%, #E54A22 90%)',
+                      transform: 'translateY(-2px)',
+                      boxShadow: '0 6px 15px rgba(254, 60, 114, 0.35)'
+                    },
+                    transition: 'all 0.3s ease'
                   }}
                 >
                   Edit Profile
@@ -202,7 +311,14 @@ function DashboardPage() {
                   startIcon={<MatchIcon />}
                   sx={{
                     background: 'linear-gradient(45deg, #FE3C72 30%, #FF6036 90%)',
-                    textTransform: 'none'
+                    textTransform: 'none',
+                    boxShadow: '0 4px 10px rgba(254, 60, 114, 0.25)',
+                    '&:hover': {
+                      background: 'linear-gradient(45deg, #E31C5F 30%, #E54A22 90%)',
+                      transform: 'translateY(-2px)',
+                      boxShadow: '0 6px 15px rgba(254, 60, 114, 0.35)'
+                    },
+                    transition: 'all 0.3s ease'
                   }}
                   onClick={handleFindMatches}
                 >
@@ -213,7 +329,14 @@ function DashboardPage() {
                   startIcon={<ChatIcon />}
                   sx={{
                     background: 'linear-gradient(45deg, #24E5A0 30%, #20D3AD 90%)',
-                    textTransform: 'none'
+                    textTransform: 'none',
+                    boxShadow: '0 4px 10px rgba(36, 229, 160, 0.25)',
+                    '&:hover': {
+                      background: 'linear-gradient(45deg, #20D3AD 30%, #00B377 90%)',
+                      transform: 'translateY(-2px)',
+                      boxShadow: '0 6px 15px rgba(36, 229, 160, 0.35)'
+                    },
+                    transition: 'all 0.3s ease'
                   }}
                   onClick={handleViewMatches}
                 >
@@ -221,72 +344,317 @@ function DashboardPage() {
                 </Button>
               </Stack>
             </Grid>
-          </Grid>
-
-          <Grid container spacing={3} sx={{ mt: 3 }}>
+          </Grid>          <Grid container spacing={3} sx={{ mt: 3 }}>
             <Grid item xs={12} md={4}>
-              <Card elevation={2}>
-                <CardContent sx={{ textAlign: 'center' }}>
-                  <ProfileIcon color="primary" sx={{ fontSize: 50, mb: 2 }} />
-                  <Typography variant="h6">Personal Info</Typography>
-                  <Typography variant="body2" color="textSecondary">
-                    Email: {user?.email}
-                    <br />
-                    Gender: {user?.gender}
-                    <br />
-                    Gender Preference: {user?.genderPreference}
-                    <br />
-                    Age Range: {user?.ageRange}
-                    <br />
-                    Distance: {user?.distance ? `${user.distance} miles` : 'Not set'}
-                  </Typography>
+              <Card elevation={2} sx={{ 
+                height: '100%',
+                transition: 'transform 0.3s ease, box-shadow 0.3s ease',
+                '&:hover': {
+                  transform: 'translateY(-5px)',
+                  boxShadow: '0 8px 20px rgba(0, 0, 0, 0.1)',
+                },
+                overflow: 'hidden',
+                position: 'relative',
+                '&::before': {
+                  content: '""',
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  width: '100%',
+                  height: '5px',
+                  background: 'linear-gradient(45deg, #FE3C72 30%, #FF6036 90%)',
+                }
+              }}>
+                <CardContent sx={{ textAlign: 'center', pt: 4 }}>
+                  <Box sx={{ 
+                    bgcolor: 'rgba(254, 60, 114, 0.1)', 
+                    borderRadius: '50%', 
+                    width: 80, 
+                    height: 80, 
+                    display: 'flex', 
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    margin: '0 auto 16px'
+                  }}>
+                    <ProfileIcon color="primary" sx={{ fontSize: 40 }} />
+                  </Box>
+                  <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>Personal Info</Typography>
+                  <Box sx={{ textAlign: 'left', pl: 2 }}>
+                    <Grid container spacing={1}>
+                      <Grid item xs={5}>
+                        <Typography variant="body2" color="textSecondary" sx={{ fontWeight: 500 }}>Email:</Typography>
+                      </Grid>
+                      <Grid item xs={7}>
+                        <Typography variant="body2">{user?.email || 'Not set'}</Typography>
+                      </Grid>
+                      
+                      <Grid item xs={5}>
+                        <Typography variant="body2" color="textSecondary" sx={{ fontWeight: 500 }}>Gender:</Typography>
+                      </Grid>
+                      <Grid item xs={7}>
+                        <Typography variant="body2">{user?.gender || 'Not set'}</Typography>
+                      </Grid>
+                      
+                      <Grid item xs={5}>
+                        <Typography variant="body2" color="textSecondary" sx={{ fontWeight: 500 }}>Preference:</Typography>
+                      </Grid>
+                      <Grid item xs={7}>
+                        <Typography variant="body2">{user?.genderPreference || 'Not set'}</Typography>
+                      </Grid>
+                      
+                      <Grid item xs={5}>
+                        <Typography variant="body2" color="textSecondary" sx={{ fontWeight: 500 }}>Age Range:</Typography>
+                      </Grid>
+                      <Grid item xs={7}>
+                        <Typography variant="body2">{user?.ageRange || 'Not set'}</Typography>
+                      </Grid>
+                      
+                      <Grid item xs={5}>
+                        <Typography variant="body2" color="textSecondary" sx={{ fontWeight: 500 }}>Distance:</Typography>
+                      </Grid>
+                      <Grid item xs={7}>
+                        <Typography variant="body2">{user?.distance ? `${user.distance} miles` : 'Not set'}</Typography>
+                      </Grid>
+                    </Grid>
+                  </Box>
                 </CardContent>
               </Card>
             </Grid>
             <Grid item xs={12} md={4}>
-              <Card elevation={2}>
-                <CardContent sx={{ textAlign: 'center' }}>
-                  <MatchIcon color="secondary" sx={{ fontSize: 50, mb: 2 }} />
-                  <Typography variant="h6">Matches</Typography>
-                  <Typography variant="body2" color="textSecondary">
-                    Total Matches: {user?.totalMatches || 0}
-                    <br />
-                    Active Chats: {user?.activeChats || 0}
-                  </Typography>
+              <Card elevation={2} sx={{ 
+                height: '100%',
+                transition: 'transform 0.3s ease, box-shadow 0.3s ease',
+                '&:hover': {
+                  transform: 'translateY(-5px)',
+                  boxShadow: '0 8px 20px rgba(0, 0, 0, 0.1)',
+                },
+                overflow: 'hidden',
+                position: 'relative',
+                '&::before': {
+                  content: '""',
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  width: '100%',
+                  height: '5px',
+                  background: 'linear-gradient(45deg, #FF6036 30%, #FFA07A 90%)',
+                }
+              }}>
+                <CardContent sx={{ textAlign: 'center', pt: 4 }}>
+                  <Box sx={{ 
+                    bgcolor: 'rgba(255, 96, 54, 0.1)', 
+                    borderRadius: '50%', 
+                    width: 80, 
+                    height: 80, 
+                    display: 'flex', 
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    margin: '0 auto 16px'
+                  }}>
+                    <MatchIcon color="secondary" sx={{ fontSize: 40 }} />
+                  </Box>
+                  <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>Matches</Typography>
+                  
+                  <Box sx={{ display: 'flex', justifyContent: 'center', mb: 2 }}>
+                    <Box sx={{ 
+                      display: 'flex', 
+                      flexDirection: 'column', 
+                      alignItems: 'center',
+                      px: 3
+                    }}>
+                      <Typography variant="h4" sx={{ fontWeight: 'bold', color: 'primary.main' }}>
+                        {user?.totalMatches || 0}
+                      </Typography>
+                      <Typography variant="body2" color="textSecondary">Total Matches</Typography>
+                    </Box>
+                    
+                    <Box sx={{ 
+                      display: 'flex', 
+                      flexDirection: 'column', 
+                      alignItems: 'center',
+                      px: 3 
+                    }}>
+                      <Typography variant="h4" sx={{ fontWeight: 'bold', color: 'secondary.main' }}>
+                        {user?.activeChats || 0}
+                      </Typography>
+                      <Typography variant="body2" color="textSecondary">Active Chats</Typography>
+                    </Box>
+                  </Box>
+                  
                   <Button 
                     variant="outlined" 
-                    color="primary" 
-                    size="small" 
-                    sx={{ mt: 2, textTransform: 'none' }}
+                    color="secondary" 
+                    sx={{ 
+                      mt: 2, 
+                      textTransform: 'none',
+                      borderRadius: '20px',
+                      px: 3,
+                      '&:hover': {
+                        backgroundColor: 'rgba(255, 96, 54, 0.08)',
+                        transform: 'translateY(-2px)'
+                      },
+                      transition: 'all 0.3s ease'
+                    }}
                     onClick={handleViewMatches}
                   >
-                    View Matches
+                    View All Matches
                   </Button>
                 </CardContent>
               </Card>
             </Grid>
             <Grid item xs={12} md={4}>
-              <Card elevation={2}>
-                <CardContent sx={{ textAlign: 'center' }}>
-                  <SettingsIcon color="primary" sx={{ fontSize: 50, mb: 2 }} />
-                  <Typography variant="h6">Account Settings</Typography>
-                  <Typography variant="body2" color="textSecondary">
-                    Privacy: Custom
-                    <br />
-                    Notifications: On
-                  </Typography>
+              <Card elevation={2} sx={{ 
+                height: '100%',
+                transition: 'transform 0.3s ease, box-shadow 0.3s ease',
+                '&:hover': {
+                  transform: 'translateY(-5px)',
+                  boxShadow: '0 8px 20px rgba(0, 0, 0, 0.1)',
+                },
+                overflow: 'hidden',
+                position: 'relative',
+                '&::before': {
+                  content: '""',
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  width: '100%',
+                  height: '5px',
+                  background: 'linear-gradient(45deg, #24E5A0 30%, #20D3AD 90%)',
+                }
+              }}>
+                <CardContent sx={{ textAlign: 'center', pt: 4 }}>
+                  <Box sx={{ 
+                    bgcolor: 'rgba(36, 229, 160, 0.1)', 
+                    borderRadius: '50%', 
+                    width: 80, 
+                    height: 80, 
+                    display: 'flex', 
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    margin: '0 auto 16px'
+                  }}>
+                    <SettingsIcon sx={{ fontSize: 40, color: '#24E5A0' }} />
+                  </Box>
+                  <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>Account Settings</Typography>
+                  
+                  <Box sx={{ mb: 3 }}>
+                    <Grid container spacing={1}>
+                      <Grid item xs={6}>
+                        <Typography variant="body2" color="textSecondary" sx={{ fontWeight: 500 }}>Privacy:</Typography>
+                      </Grid>
+                      <Grid item xs={6} sx={{ textAlign: 'left' }}>
+                        <Chip 
+                          label="Custom" 
+                          size="small" 
+                          sx={{ 
+                            bgcolor: 'rgba(36, 229, 160, 0.1)', 
+                            color: '#24E5A0',
+                            fontWeight: 500
+                          }} 
+                        />
+                      </Grid>
+                      
+                      <Grid item xs={6}>
+                        <Typography variant="body2" color="textSecondary" sx={{ fontWeight: 500 }}>Notifications:</Typography>
+                      </Grid>
+                      <Grid item xs={6} sx={{ textAlign: 'left' }}>
+                        <Chip 
+                          label="On" 
+                          size="small" 
+                          sx={{ 
+                            bgcolor: 'rgba(36, 229, 160, 0.1)', 
+                            color: '#24E5A0',
+                            fontWeight: 500
+                          }} 
+                        />
+                      </Grid>
+                    </Grid>
+                  </Box>
+                  
                   <Button 
                     variant="outlined" 
-                    color="primary" 
-                    size="small" 
-                    sx={{ mt: 2, textTransform: 'none' }}
+                    sx={{ 
+                      mt: 1,
+                      textTransform: 'none',
+                      borderRadius: '20px',
+                      borderColor: '#24E5A0',
+                      color: '#24E5A0',
+                      px: 3,
+                      '&:hover': {
+                        borderColor: '#00B377',
+                        backgroundColor: 'rgba(36, 229, 160, 0.08)',
+                        transform: 'translateY(-2px)'
+                      },
+                      transition: 'all 0.3s ease'
+                    }}
+                    onClick={() => navigate('/settings')}
                   >
                     Manage Settings
                   </Button>
                 </CardContent>
               </Card>
             </Grid>
-          </Grid>
+          </Grid>        </Paper>
+        
+        {/* Activity feed section */}
+        <Paper 
+          elevation={3} 
+          sx={{ 
+            p: 4, 
+            borderRadius: 3, 
+            mt: 3,
+            transition: 'transform 0.3s ease, box-shadow 0.3s ease',
+            '&:hover': {
+              boxShadow: '0 8px 24px rgba(0, 0, 0, 0.12)',
+            }
+          }}
+        >
+          <Typography 
+            variant="h5" 
+            sx={{ 
+              mb: 3, 
+              fontWeight: 600,
+              borderBottom: '2px solid rgba(254, 60, 114, 0.2)',
+              paddingBottom: 1
+            }}
+          >
+            Recent Activity
+          </Typography>
+          
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            {/* Show a message if there's no activity */}
+            <Box sx={{ 
+              p: 3, 
+              textAlign: 'center', 
+              backgroundColor: 'rgba(0, 0, 0, 0.02)', 
+              borderRadius: 2 
+            }}>
+              <Typography color="text.secondary">
+                No recent activity to show. Start matching with people to see activity here!
+              </Typography>
+              <Button 
+                variant="contained" 
+                color="primary"
+                onClick={handleFindMatches}
+                sx={{ 
+                  mt: 2,
+                  background: 'linear-gradient(45deg, #FE3C72 30%, #FF6036 90%)',
+                  textTransform: 'none',
+                  px: 4,
+                  py: 1,
+                  boxShadow: '0 4px 10px rgba(254, 60, 114, 0.25)',
+                  '&:hover': {
+                    background: 'linear-gradient(45deg, #E31C5F 30%, #E54A22 90%)',
+                    transform: 'translateY(-2px)',
+                    boxShadow: '0 6px 15px rgba(254, 60, 114, 0.35)'
+                  },
+                  transition: 'all 0.3s ease'
+                }}
+              >
+                Find Matches Now
+              </Button>
+            </Box>
+          </Box>
         </Paper>
 
         <Snackbar 
@@ -298,13 +666,17 @@ function DashboardPage() {
           <Alert 
             onClose={handleCloseSnackbar} 
             severity="error" 
-            sx={{ width: '100%' }}
+            sx={{ 
+              width: '100%',
+              boxShadow: '0 4px 20px rgba(0, 0, 0, 0.1)',
+              borderRadius: 2
+            }}
           >
             {error}
           </Alert>
         </Snackbar>
       </Container>
-    </ThemeProvider>
+    </>
   );
 }
 

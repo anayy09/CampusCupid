@@ -7,8 +7,6 @@ import {
   Box,
   Paper,
   Link,
-  ThemeProvider,
-  createTheme,
   styled,
   CircularProgress,
   Snackbar,
@@ -50,32 +48,7 @@ const StyledTextField = styled(TextField)({
   },
 });
 
-// Tinder-inspired theme
-const theme = createTheme({
-  palette: {
-    primary: {
-      main: '#FE3C72', // Tinder's pink
-      light: '#FF7A9C',
-      dark: '#E31C5F',
-    },
-    secondary: {
-      main: '#FF6036', // Tinder's orange
-    },
-    background: {
-      default: '#fff',
-    },
-  },
-  typography: {
-    fontFamily: '"Gotham SSm", "Helvetica Neue", sans-serif',
-  },
-  shape: {
-    borderRadius: 8,
-  },
-});
-
 // Backend API base URL - use environment variable
-
-// change this an envieremtnal varible 
 const API_URL = process.env.REACT_APP_API_URL;
 
 function LoginPage() {
@@ -155,144 +128,126 @@ function LoginPage() {
   };
 
   return (
-    <ThemeProvider theme={theme}>
-      <Container maxWidth="sm">
-        <Box
+    <Container maxWidth="sm">
+      <Box
+        sx={{
+          minHeight: '100vh',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'center',
+          py: 4,
+        }}
+      >
+        <Paper
+          elevation={3}
           sx={{
-            minHeight: '100vh',
+            p: 4,
             display: 'flex',
             flexDirection: 'column',
-            justifyContent: 'center',
-            py: 4,
+            alignItems: 'center',
+            borderRadius: '16px',
           }}
         >
-          <Paper
-            elevation={3}
+          <Typography
+            component="h1"
+            variant="h4"
             sx={{
-              p: 4,
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              borderRadius: '16px',
+              mb: 3,
+              fontWeight: 'bold',
+              background: '-webkit-linear-gradient(45deg, #FE3C72 30%, #FF6036 90%)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
             }}
           >
-            <Typography
-              component="h1"
-              variant="h4"
+            Campus Cupid
+          </Typography>
+          
+          <Typography variant="subtitle1" sx={{ mb: 3, textAlign: 'center', color: '#666' }}>
+            Welcome back! Please sign in to continue
+          </Typography>
+
+          <Box component="form" onSubmit={handleLogin} sx={{ width: '100%' }}>
+            <StyledTextField
+              margin="normal"
+              required
+              fullWidth
+              id="email"
+              label="Email"
+              name="email"
+              autoComplete="email"
+              autoFocus
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              sx={{ mb: 2 }}
+              error={!!error && error.includes('email')}
+              helperText={error && error.includes('email') ? error : ''}
+            />
+            <StyledTextField
+              margin="normal"
+              required
+              fullWidth
+              name="password"
+              label="Password"
+              type={showPassword ? 'text' : 'password'}
+              id="password"
+              autoComplete="current-password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              sx={{ mb: 3 }}
+              error={!!error && error.includes('password')}
+              helperText={error && error.includes('password') ? error : ''}
+              InputProps={{
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <IconButton
+                      aria-label="toggle password visibility"
+                      onClick={handleTogglePasswordVisibility}
+                      edge="end"
+                    >
+                      {showPassword ? <VisibilityOff /> : <Visibility />}
+                    </IconButton>
+                  </InputAdornment>
+                ),
+              }}
+            />
+            <Button
+              type="submit"
+              fullWidth
+              variant="contained"
+              size="large"
+              disabled={loading}
               sx={{
-                mb: 3,
+                height: 56,
+                background: 'linear-gradient(45deg, #FE3C72 30%, #FF6036 90%)',
+                '&:hover': {
+                  background: 'linear-gradient(45deg, #E31C5F 30%, #E31C5F 90%)',
+                },
+                textTransform: 'none',
+                fontSize: '1rem',
                 fontWeight: 'bold',
-                background: '-webkit-linear-gradient(45deg, #FE3C72 30%, #FF6036 90%)',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
+                boxShadow: '0 4px 12px rgba(254, 60, 114, 0.3)',
               }}
             >
-              Campus Cupid
-            </Typography>
-            
-            <Typography variant="subtitle1" sx={{ mb: 3, textAlign: 'center', color: '#666' }}>
-              Welcome back! Please sign in to continue
-            </Typography>
+              {loading ? <CircularProgress size={24} color="inherit" /> : 'Sign In'}
+            </Button>
 
-            <Box component="form" onSubmit={handleLogin} sx={{ width: '100%' }}>
-              <StyledTextField
-                margin="normal"
-                required
-                fullWidth
-                id="email"
-                label="Email"
-                name="email"
-                autoComplete="email"
-                autoFocus
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                sx={{ mb: 2 }}
-                error={!!error && error.includes('email')}
-                helperText={error && error.includes('email') ? error : ''}
-              />
-              <StyledTextField
-                margin="normal"
-                required
-                fullWidth
-                name="password"
-                label="Password"
-                type={showPassword ? 'text' : 'password'}
-                id="password"
-                autoComplete="current-password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                sx={{ mb: 3 }}
-                error={!!error && error.includes('password')}
-                helperText={error && error.includes('password') ? error : ''}
-                InputProps={{
-                  endAdornment: (
-                    <InputAdornment position="end">
-                      <IconButton
-                        aria-label="toggle password visibility"
-                        onClick={handleTogglePasswordVisibility}
-                        edge="end"
-                      >
-                        {showPassword ? <VisibilityOff /> : <Visibility />}
-                      </IconButton>
-                    </InputAdornment>
-                  ),
-                }}
-              />
-              <Button
-                type="submit"
-                fullWidth
-                variant="contained"
-                size="large"
-                disabled={loading}
-                sx={{
-                  height: 56,
-                  background: 'linear-gradient(45deg, #FE3C72 30%, #FF6036 90%)',
-                  '&:hover': {
-                    background: 'linear-gradient(45deg, #E31C5F 30%, #E31C5F 90%)',
-                  },
-                  textTransform: 'none',
-                  fontSize: '1rem',
-                  fontWeight: 'bold',
-                  boxShadow: '0 4px 12px rgba(254, 60, 114, 0.3)',
-                }}
-              >
-                {loading ? <CircularProgress size={24} color="inherit" /> : 'Sign In'}
-              </Button>
-
-              <Box sx={{ mt: 3, textAlign: 'center' }}>
-                <Link href="/forgot-password" variant="body2" sx={{ color: 'primary.main', textDecoration: 'none' }}>
-                  Forgot password?
+            <Box sx={{ mt: 3, textAlign: 'center' }}>
+              <Link href="/forgot-password" variant="body2" sx={{ color: 'primary.main', textDecoration: 'none' }}>
+                Forgot password?
+              </Link>
+              <Box sx={{ mt: 2 }}>
+                <Typography variant="body2" display="inline" sx={{ mr: 1, color: '#666' }}>
+                  Don't have an account?
+                </Typography>
+                <Link href="/signup" variant="body2" sx={{ color: 'primary.main', fontWeight: 'bold', textDecoration: 'none' }}>
+                  Sign Up
                 </Link>
-                <Box sx={{ mt: 2 }}>
-                  <Typography variant="body2" display="inline" sx={{ mr: 1, color: '#666' }}>
-                    Don't have an account?
-                  </Typography>
-                  <Link href="/signup" variant="body2" sx={{ color: 'primary.main', fontWeight: 'bold', textDecoration: 'none' }}>
-                    Sign Up
-                  </Link>
-                </Box>
               </Box>
             </Box>
-          </Paper>
-        </Box>
-        
-        {/* Error Notification */}
-        <Snackbar 
-          open={openSnackbar} 
-          autoHideDuration={6000} 
-          onClose={handleCloseSnackbar}
-          anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
-        >
-          <Alert 
-            onClose={handleCloseSnackbar} 
-            severity="error" 
-            sx={{ width: '100%', boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)' }}
-          >
-            {error}
-          </Alert>
-        </Snackbar>
-      </Container>
-    </ThemeProvider>
+          </Box>
+        </Paper>
+      </Box>
+    </Container>
   );
 }
 

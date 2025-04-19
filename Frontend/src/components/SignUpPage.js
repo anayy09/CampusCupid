@@ -11,8 +11,6 @@ import {
   Typography,
   Box,
   Paper,
-  ThemeProvider,
-  createTheme,
   Stepper,
   Step,
   StepLabel,
@@ -25,24 +23,9 @@ import {
   Grid,
   Snackbar,
   Alert,
-  CircularProgress
+  CircularProgress,
+  useTheme
 } from '@mui/material';
-
-const theme = createTheme({
-  palette: {
-    primary: {
-      main: '#FE3C72',
-      light: '#FF7A9C',
-      dark: '#E31C5F',
-    },
-    secondary: {
-      main: '#FF6036',
-    }
-  },
-  shape: {
-    borderRadius: 8,
-  },
-});
 
 const StyledTextField = styled(TextField)({
   '& label.Mui-focused': {
@@ -112,10 +95,10 @@ const suggestedInterests = [
   'Gardening'
 ];
 
-// Updated API URL - replace with your backend URL
 const API_URL = process.env.REACT_APP_API_URL;
 
 function SignUpPage() {
+  const theme = useTheme();
   const navigate = useNavigate();
   const navigateToHome = () => {
     navigate('/');
@@ -741,82 +724,74 @@ function SignUpPage() {
   };
 
   return (
-    <ThemeProvider theme={theme}>
-      <Container maxWidth="sm">
-        <Box sx={{ minHeight: '100vh', py: 4 }}>
-          <Paper elevation={3} sx={{ p: 4, position: 'relative' }}>
-            {/* Home navigation button */}
-            <IconButton
-              onClick={() => navigate('/')}
+    <Container maxWidth="sm">
+      <Box sx={{ minHeight: '100vh', py: 4 }}>
+        <Paper elevation={3} sx={{ p: 4, position: 'relative' }}>
+          {/* Home navigation button */}
+          <IconButton
+            onClick={() => navigate('/')}
+            sx={{
+              position: 'absolute',
+              left: 16,
+              top: 16,
+              color: theme.palette.primary.main,
+              '&:hover': {
+                backgroundColor: 'rgba(254, 60, 114, 0.1)',
+              },
+            }}
+            aria-label="back to home"
+          >
+            <ArrowBackIcon />
+          </IconButton>
+
+          <Typography
+            variant="h4"
+            sx={{
+              textAlign: 'center',
+              mb: 4,
+              fontWeight: 'bold',
+              background: '-webkit-linear-gradient(45deg, #FE3C72 30%, #FF6036 90%)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+            }}
+          >
+            Join Campus Cupid
+          </Typography>
+
+          <Stepper activeStep={activeStep} sx={{ mb: 4 }}>
+            {steps.map((label) => (
+              <Step key={label}>
+                <StepLabel>{label}</StepLabel>
+              </Step>
+            ))}
+          </Stepper>
+
+          {renderStepContent(activeStep)}
+
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 4 }}>
+            <Button
+              disabled={activeStep === 0}
+              onClick={handleBack}
+              sx={{ color: '#FE3C72' }}
+            >
+              Back
+            </Button>
+            <Button
+              variant="contained"
+              onClick={activeStep === steps.length - 1 ? handleSubmit : handleNext}
               sx={{
-                position: 'absolute',
-                left: 16,
-                top: 16,
-                color: theme.palette.primary.main,
+                background: 'linear-gradient(45deg, #FE3C72 30%, #FF6036 90%)',
                 '&:hover': {
-                  backgroundColor: 'rgba(254, 60, 114, 0.1)',
+                  background: 'linear-gradient(45deg, #E31C5F 30%, #E31C5F 90%)',
                 },
               }}
-              aria-label="back to home"
             >
-              <ArrowBackIcon />
-            </IconButton>
-
-            <Typography
-              variant="h4"
-              sx={{
-                textAlign: 'center',
-                mb: 4,
-                fontWeight: 'bold',
-                background: '-webkit-linear-gradient(45deg, #FE3C72 30%, #FF6036 90%)',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-              }}
-            >
-              Join Campus Cupid
-            </Typography>
-
-            <Stepper activeStep={activeStep} sx={{ mb: 4 }}>
-              {steps.map((label) => (
-                <Step key={label}>
-                  <StepLabel>{label}</StepLabel>
-                </Step>
-              ))}
-            </Stepper>
-
-            {renderStepContent(activeStep)}
-
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 4 }}>
-              <Button
-                disabled={activeStep === 0}
-                onClick={handleBack}
-                sx={{ color: '#FE3C72' }}
-              >
-                Back
-              </Button>
-              <Button
-                variant="contained"
-                onClick={activeStep === steps.length - 1 ? handleSubmit : handleNext}
-                sx={{
-                  background: 'linear-gradient(45deg, #FE3C72 30%, #FF6036 90%)',
-                  '&:hover': {
-                    background: 'linear-gradient(45deg, #E31C5F 30%, #E31C5F 90%)',
-                  },
-                }}
-              >
-                {activeStep === steps.length - 1 ? 'Create Account' : 'Next'}
-              </Button>
-            </Box>
-          </Paper>
-        </Box>
-      </Container>
-      
-      <Snackbar open={openSnackbar} autoHideDuration={6000} onClose={handleCloseSnackbar}>
-        <Alert onClose={handleCloseSnackbar} severity="error" sx={{ width: '100%' }}>
-          {submitError}
-        </Alert>
-      </Snackbar>
-    </ThemeProvider>
+              {activeStep === steps.length - 1 ? 'Create Account' : 'Next'}
+            </Button>
+          </Box>
+        </Paper>
+      </Box>
+    </Container>
   );
 }
 
