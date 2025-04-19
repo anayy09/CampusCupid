@@ -50,3 +50,5 @@ main
 # Ignore generated files
 /docs/swagger.json
 /docs/docs.go
+
+/uploads

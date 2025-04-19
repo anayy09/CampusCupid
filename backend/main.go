@@ -53,10 +53,19 @@ func main() {
 	// Serve Swagger documentation
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
+	// Initialize Cloudinary
+	if err := storage.InitCloudinary(); err != nil {
+		log.Fatalf("Failed to initialize Cloudinary: %v", err)
+	}
 	// LOGIN APIS
 	// Public authentication routes
 	r.POST("/register", handlers.Register)
 	r.POST("/login", handlers.Login)
+	// Public route for uploading photos during registration (no auth required)
+	r.POST("/public/upload/photos", handlers.PublicUploadPhotos) // For registration without auth
+	// Protected routes for photo management (auth required)
+	r.POST("/upload/photos", middleware.AuthMiddleware(), handlers.UploadPhotos)
+	r.DELETE("/upload/photos", middleware.AuthMiddleware(), handlers.DeletePhoto)
 
 	// USER PROFILE APIS - Protected with authentication middleware
 	// get profile info
