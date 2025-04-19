@@ -5,6 +5,7 @@ import LoginPage from "./components/LoginPage";
 import SignUpPage from './components/SignUpPage';
 import MatcherPage from "./components/matcher";
 import DashboardPage from "./components/Dashboard";
+import MatchesPage from "./components/MatchesPage";
 
 function App() {
   return (
@@ -19,6 +20,7 @@ function App() {
          {/* Route for Dashboard Page */}
          <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/matcher" element={<MatcherPage />} />
+        <Route path="/matches" element={<MatchesPage />} />
       </Routes>
     </Router>
   );

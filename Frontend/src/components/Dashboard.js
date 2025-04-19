@@ -13,12 +13,14 @@ import {
   CardContent,
   IconButton,
   Snackbar,
-  Alert
+  Alert,
+  Stack
 } from '@mui/material';
 import { 
   Edit as EditIcon, 
   Person as ProfileIcon, 
-  Favorite as MatchIcon, 
+  Favorite as MatchIcon,
+  Chat as ChatIcon,
   Settings as SettingsIcon,
   Logout as LogoutIcon
 } from '@mui/icons-material';
@@ -47,7 +49,7 @@ const theme = createTheme({
   },
 });
 
-const API_URL = process.env.REACT_APP_API_URL;
+const API_URL = process.env.REACT_APP_API_URL || 'https://campuscupid-backend.onrender.com';
 const DEFAULT_PROFILE_IMAGE = '/default-profile.jpg';
 
 function DashboardPage() {
@@ -115,6 +117,10 @@ function DashboardPage() {
     navigate('/matcher');
   };
 
+  const handleViewMatches = () => {
+    navigate('/matches');
+  };
+
   if (loading) {
     return (
       <ThemeProvider theme={theme}>
@@ -180,7 +186,7 @@ function DashboardPage() {
                 <br />
                 Sexual Orientation: {user?.sexualOrientation || 'Not specified'}
               </Typography>
-              <Box sx={{ display: 'flex', gap: 2, mt: 2 }}>
+              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} mt={2}>
                 <Button 
                   variant="contained" 
                   startIcon={<EditIcon />}
@@ -202,7 +208,18 @@ function DashboardPage() {
                 >
                   Find Matches
                 </Button>
-              </Box>
+                <Button 
+                  variant="contained" 
+                  startIcon={<ChatIcon />}
+                  sx={{
+                    background: 'linear-gradient(45deg, #24E5A0 30%, #20D3AD 90%)',
+                    textTransform: 'none'
+                  }}
+                  onClick={handleViewMatches}
+                >
+                  View Matches
+                </Button>
+              </Stack>
             </Grid>
           </Grid>
 
@@ -241,9 +258,9 @@ function DashboardPage() {
                     color="primary" 
                     size="small" 
                     sx={{ mt: 2, textTransform: 'none' }}
-                    onClick={() => navigate('/matcher')}
+                    onClick={handleViewMatches}
                   >
-                    Find Matches
+                    View Matches
                   </Button>
                 </CardContent>
               </Card>
