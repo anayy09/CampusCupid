@@ -30,6 +30,50 @@ definitions:
       updated_at:
         type: string
     type: object
+  models.RegistrationRequest:
+    properties:
+      dateOfBirth:
+        type: string
+      email:
+        type: string
+      firstName:
+        type: string
+      gender:
+        type: string
+      interestedIn:
+        type: string
+      interests:
+        items:
+          type: string
+        type: array
+      latitude:
+        type: number
+      longitude:
+        type: number
+      lookingFor:
+        type: string
+      password:
+        minLength: 8
+        type: string
+      photos:
+        items:
+          type: string
+        type: array
+      profilePictureURL:
+        type: string
+      sexualOrientation:
+        type: string
+    required:
+    - dateOfBirth
+    - email
+    - firstName
+    - gender
+    - interestedIn
+    - interests
+    - lookingFor
+    - password
+    - photos
+    type: object
   models.ReportRequest:
     properties:
       reason:
@@ -428,6 +472,7 @@ paths:
       consumes:
       - application/json
       description: Retrieve a list of potential matches based on user preferences
+        (Temporarily shows all users except self and blocked)
       parameters:
       - description: User ID
         in: path
@@ -471,7 +516,8 @@ paths:
             additionalProperties:
               type: string
             type: object
-      summary: Get potential matches
+      summary: Get potential matches (TEMPORARILY MODIFIED FOR DEBUGGING - SHOWS ALL
+        USERS)
       tags:
       - matchmaking
   /messages:
@@ -817,6 +863,84 @@ paths:
       summary: Update user profile by user_id
       tags:
       - users
+  /public/upload/photos:
+    post:
+      consumes:
+      - multipart/form-data
+      description: Uploads photos to Cloudinary without requiring authentication (for
+        registration)
+      parameters:
+      - description: Photos to upload (multiple allowed)
+        in: formData
+        name: photos
+        required: true
+        type: file
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: URLs of uploaded photos
+          schema:
+            additionalProperties:
+              items:
+                allOf:
+                - type: string
+                - properties:
+                    urls:
+                      type: string
+                  type: object
+              type: array
+            type: object
+        "400":
+          description: Bad Request (e.g., no files, file too large, invalid type)
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Upload photos without authentication
+      tags:
+      - uploads
+  /register:
+    post:
+      consumes:
+      - application/json
+      description: Create a new user account with profile details
+      parameters:
+      - description: User registration details
+        in: body
+        name: registration
+        required: true
+        schema:
+          $ref: '#/definitions/models.RegistrationRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: User registered successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request (validation errors)
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Register a new user
+      tags:
+      - users
   /report/{target_id}:
     post:
       consumes:
@@ -872,4 +996,88 @@ paths:
       summary: Report a user
       tags:
       - matchmaking
+  /upload/photos:
+    delete:
+      consumes:
+      - application/json
+      description: Deletes a photo from Cloudinary by URL
+      parameters:
+      - description: URL of the photo to delete
+        in: body
+        name: request
+        required: true
+        schema:
+          additionalProperties:
+            allOf:
+            - type: string
+            - properties:
+                url:
+                  type: string
+              type: object
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success message
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Delete photo
+      tags:
+      - uploads
+    post:
+      consumes:
+      - multipart/form-data
+      description: Uploads one or more photos for a user profile to Cloudinary
+      parameters:
+      - description: Photos to upload (multiple allowed)
+        in: formData
+        name: photos
+        required: true
+        type: file
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: URLs of uploaded photos
+          schema:
+            additionalProperties:
+              items:
+                allOf:
+                - type: string
+                - properties:
+                    urls:
+                      type: string
+                  type: object
+              type: array
+            type: object
+        "400":
+          description: Bad Request (e.g., no files, file too large, invalid type)
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Upload photos
+      tags:
+      - uploads
 swagger: "2.0"
