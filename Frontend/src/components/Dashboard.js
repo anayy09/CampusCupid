@@ -16,7 +16,13 @@ import {
   CircularProgress,
   Tabs,
   Tab,
-  Chip
+  Chip,
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  ImageList,
+  ImageListItem,
+  useTheme
 } from '@mui/material';
 import { 
   Edit as EditIcon, 
@@ -25,13 +31,15 @@ import {
   Chat as ChatIcon,
   Settings as SettingsIcon,
   PhotoLibrary as GalleryIcon,
-  LocationOn as LocationIcon
+  LocationOn as LocationIcon,
+  Close as CloseIcon
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import NavBar from './common/NavBar';
 
-const API_URL = process.env.REACT_APP_API_URL || 'https://campuscupid.onrender.com';
+const API_URL = 'https://campuscupid.onrender.com';
+// Use the first uploaded photo as profile image when available, or fall back to default
 const DEFAULT_PROFILE_IMAGE = '/default-profile.jpg';
 
 function DashboardPage() {
@@ -40,6 +48,8 @@ function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [openSnackbar, setOpenSnackbar] = useState(false);
+  const [openGallery, setOpenGallery] = useState(false); // State for gallery dialog
+  const theme = useTheme(); // Get theme for breakpoints
 
   useEffect(() => {
     const fetchUserProfile = async () => {
@@ -99,9 +109,22 @@ function DashboardPage() {
     navigate('/matcher');
   };
 
+  const handleViewProfile = () => {
+    navigate('/editprofile');
+  };
+
   const handleViewMatches = () => {
     navigate('/matches');
   };
+
+  const handleOpenGallery = () => {
+    setOpenGallery(true);
+  };
+
+  const handleCloseGallery = () => {
+    setOpenGallery(false);
+  };
+
   if (loading) {
     return (
       <>
@@ -144,10 +167,9 @@ function DashboardPage() {
                 flexDirection: 'column', 
                 alignItems: 'center', 
                 position: 'relative'
-              }}>
-                <Avatar
+              }}>                <Avatar
                   alt={user?.firstName}
-                  src={user?.profilePictureURL || DEFAULT_PROFILE_IMAGE}
+                  src={user?.profilePictureURL || (user?.photos && user?.photos.length > 0 ? user.photos[0] : DEFAULT_PROFILE_IMAGE)}
                   sx={{ 
                     width: 200, 
                     height: 200, 
@@ -161,15 +183,20 @@ function DashboardPage() {
                     }
                   }}
                 />
-                {/* Photo gallery indicator */}
+                {/* Photo gallery indicator - Make it clickable */} 
                 {user?.photos && user.photos.length > 0 && (
                   <Box 
+                    onClick={handleOpenGallery} // Add onClick handler
                     sx={{ 
                       mt: 2, 
                       display: 'flex', 
                       alignItems: 'center',
                       justifyContent: 'center',
-                      gap: 1
+                      gap: 1,
+                      cursor: 'pointer', // Add cursor pointer
+                      '&:hover': {
+                        opacity: 0.8
+                      }
                     }}
                   >
                     <GalleryIcon color="primary" fontSize="small" />
@@ -178,7 +205,6 @@ function DashboardPage() {
                       sx={{ 
                         color: 'primary.main', 
                         fontWeight: 500,
-                        cursor: 'pointer',
                         '&:hover': {
                           textDecoration: 'underline'
                         }
@@ -303,6 +329,7 @@ function DashboardPage() {
                     },
                     transition: 'all 0.3s ease'
                   }}
+                  onClick={handleViewProfile}
                 >
                   Edit Profile
                 </Button>
@@ -597,7 +624,7 @@ function DashboardPage() {
           </Grid>        </Paper>
         
         {/* Activity feed section */}
-        <Paper 
+        {/* <Paper 
           elevation={3} 
           sx={{ 
             p: 4, 
@@ -622,7 +649,7 @@ function DashboardPage() {
           </Typography>
           
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-            {/* Show a message if there's no activity */}
+            
             <Box sx={{ 
               p: 3, 
               textAlign: 'center', 
@@ -655,7 +682,7 @@ function DashboardPage() {
               </Button>
             </Box>
           </Box>
-        </Paper>
+        </Paper> */}
 
         <Snackbar 
           open={openSnackbar} 
@@ -676,6 +703,48 @@ function DashboardPage() {
           </Alert>
         </Snackbar>
       </Container>
+
+      {/* Photo Gallery Dialog */}
+      <Dialog 
+        open={openGallery} 
+        onClose={handleCloseGallery} 
+        maxWidth="md" 
+        fullWidth
+      >
+        <DialogTitle sx={{ m: 0, p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          Photo Gallery
+          <IconButton
+            aria-label="close"
+            onClick={handleCloseGallery}
+            sx={{ color: (theme) => theme.palette.grey[500] }}
+          >
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent dividers sx={{ p: 1 }}>
+          {user?.photos && user.photos.length > 0 ? (
+            <ImageList 
+              variant="masonry" 
+              cols={theme.breakpoints.up('sm') ? 3 : 2} // Adjust columns based on screen size
+              gap={8}
+            >
+              {user.photos.map((photoUrl, index) => (
+                <ImageListItem key={index}>
+                  <img
+                    src={`${photoUrl}`}
+                    srcSet={`${photoUrl}`}
+                    alt={`User photo ${index + 1}`}
+                    loading="lazy"
+                    style={{ borderRadius: '8px', display: 'block', width: '100%' }}
+                  />
+                </ImageListItem>
+              ))}
+            </ImageList>
+          ) : (
+            <Typography sx={{ textAlign: 'center', p: 3 }}>No photos available.</Typography>
+          )}
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

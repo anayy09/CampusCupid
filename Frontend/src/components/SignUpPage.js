@@ -27,7 +27,7 @@ import {
   useTheme
 } from '@mui/material';
 
-const StyledTextField = styled(TextField)({
+const StyledTextField = styled(TextField)(({
   '& label.Mui-focused': {
     color: '#FE3C72',
   },
@@ -39,9 +39,9 @@ const StyledTextField = styled(TextField)({
       borderColor: '#FF6036',
     },
   },
-});
+}));
 
-const ImageUploadBox = styled(Box)({
+const ImageUploadBox = styled(Box)(({
   width: '100%',
   height: 200,
   border: '2px dashed #FE3C72',
@@ -57,7 +57,7 @@ const ImageUploadBox = styled(Box)({
     borderColor: '#FF6036',
     backgroundColor: 'rgba(254, 60, 114, 0.05)',
   },
-});
+}));
 
 // List of suggested interests for the autocomplete field
 const suggestedInterests = [
@@ -95,7 +95,8 @@ const suggestedInterests = [
   'Gardening'
 ];
 
-const API_URL = process.env.REACT_APP_API_URL || 'https://campuscupid.onrender.com';
+const API_URL = 'https://campuscupid.onrender.com';
+console.log('API URL:', API_URL); // Added for debugging
 
 function SignUpPage() {
   const theme = useTheme();
@@ -135,6 +136,7 @@ function SignUpPage() {
   const [submitError, setSubmitError] = useState('');
   const [openSnackbar, setOpenSnackbar] = useState(false);
   const [loadingLocation, setLoadingLocation] = useState(false);
+  const [isUploading, setIsUploading] = useState(false); // Add state for upload loading
 
   const steps = ['Basic Info', 'About You', 'Photos'];
 
@@ -314,26 +316,26 @@ function SignUpPage() {
 
   const handlePhotoUpload = (event) => {
     const files = Array.from(event.target.files);
-    const newPhotos = [...formData.photos];
+    const currentPhotoCount = formData.photos.length;
+    const availableSlots = 9 - currentPhotoCount;
+    const filesToAdd = files.slice(0, availableSlots);
+
+    const newPhotos = [...formData.photos, ...filesToAdd];
     const newPreviewUrls = [...previewUrls];
 
-    files.forEach(file => {
-      if (newPhotos.length < 9) {
-        newPhotos.push(file);
-        const previewUrl = URL.createObjectURL(file);
-        newPreviewUrls.push(previewUrl);
-      }
+    filesToAdd.forEach(file => {
+      const previewUrl = URL.createObjectURL(file);
+      newPreviewUrls.push(previewUrl);
     });
 
     setFormData({
       ...formData,
-      photos: newPhotos
+      photos: newPhotos // Store File objects temporarily
     });
     setPreviewUrls(newPreviewUrls);
-  };
-
-  // Convert form data to match backend API expectations
-  const prepareFormDataForSubmission = () => {
+  };  // Convert form data to match backend API expectations
+  // This function takes photo URLs and profilePictureURL as arguments
+  const prepareFormDataForSubmission = (photoUrls, profilePictureURL = '') => {
     // Map the gender values to match backend expectations
     const genderMap = {
       'woman': 'Female',
@@ -354,15 +356,7 @@ function SignUpPage() {
       'shortTerm': 'Casual',
       'casual': 'Casual',
       'friendship': 'Friendship'
-    };
-
-    // Convert photo files to filenames or URLs
-    // In a real app, you would upload these files to a server and get back URLs
-    const photoUrls = formData.photos.map((photo, index) => 
-      `photo${index + 1}.jpg`
-    );
-
-    return {
+    };    return {
       firstName: formData.firstName,
       email: formData.email,
       password: formData.password,
@@ -373,52 +367,100 @@ function SignUpPage() {
       interests: formData.interests,
       sexualOrientation: formData.sexualOrientation,
       bio: formData.bio,
-      photos: photoUrls,
-      location: {
-        latitude: formData.location.latitude,
-        longitude: formData.location.longitude,
-        city: formData.location.city,
-        country: formData.location.country
-      }
+      photos: photoUrls, // All uploaded photo URLs
+      profilePictureURL: profilePictureURL || (photoUrls.length > 0 ? photoUrls[0] : ''), // Set first photo as default profile pic
+      // Include location data if available
+      latitude: formData.location.latitude,
+      longitude: formData.location.longitude,
     };
   };
 
-  const handleSubmit = async () => {
-    try {
-      // Check if at least 2 photos are uploaded
-      if (formData.photos.length < 2) {
-        setSubmitError('Please upload at least 2 photos');
-        setOpenSnackbar(true);
-        return;
+const handleSubmit = async () => {
+  // Check if at least 2 photos are selected
+  if (formData.photos.length < 2) {
+    setSubmitError('Please select at least 2 photos to upload');
+    setOpenSnackbar(true);
+    return;
+  }
+
+  setIsUploading(true);
+  setSubmitError('');  try {
+    console.log('Uploading real photos first using public upload endpoint...');
+    
+    // Step 1: Upload the actual photos using the public endpoint
+    const photoFormData = new FormData();
+    formData.photos.forEach((photoFile) => {
+      if (photoFile instanceof File) {
+        photoFormData.append('photos', photoFile);
       }
+    });
+    
+    console.log('Uploading photos to public endpoint...');
+    const uploadResponse = await fetch(`${API_URL}/public/upload/photos`, {
+      method: 'POST',
+      body: photoFormData,
+    });
 
-      // Prepare data for API
-      const apiData = prepareFormDataForSubmission();
-      console.log('Submitting data to API:', apiData);
-   
-      // Make API call to register endpoint
-      const response = await fetch(`${API_URL}/register`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(apiData),
-      });
+    if (!uploadResponse.ok) {
+      const errorData = await uploadResponse.json();
+      throw new Error(errorData.error || 'Photo upload failed');
+    }
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Registration failed');
+    const uploadResult = await uploadResponse.json();
+    const photoUrls = uploadResult.urls; // Get the real Cloudinary URLs    console.log('Photos uploaded successfully:', photoUrls);
+    
+    // Set the first photo as the profile picture
+    const profilePictureURL = photoUrls.length > 0 ? photoUrls[0] : '';
+    console.log('Setting profile picture URL:', profilePictureURL);
+    
+    // Step 2: Prepare registration data with the real photo URLs
+    const registrationData = prepareFormDataForSubmission(photoUrls, profilePictureURL);
+    console.log('Registration data with real photos:', registrationData);
+
+    const registerResponse = await fetch(`${API_URL}/register`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(registrationData),
+    });
+
+    if (!registerResponse.ok) {
+      const errorData = await registerResponse.json();
+      let errorMessage = errorData.error || 'Registration failed';
+      if (errorData.details) {
+        errorMessage += `: ${Object.values(errorData.details).join(', ')}`;
       }
+      throw new Error(errorMessage);
+    }
 
-      // Simply redirect to login page after successful registration (no animation)
-      navigate('/login');
-      
-    } catch (error) {
-      console.error('Error during registration:', error);
-      setSubmitError(error.message);
+    // Registration successful
+    console.log('Registration successful!');
+    
+    // Store photo information in local storage to use after login
+    if (formData.photos.length > 0) {
+      // Save preview URLs temporarily to show after login
+      localStorage.setItem('pendingPhotoCount', formData.photos.length.toString());
+      setSubmitError('');
       setOpenSnackbar(true);
     }
-  };
+    
+    // Navigate to login page with a message about completing photo upload
+    navigate('/login', { 
+      state: { 
+        message: 'Account created successfully! Please log in to complete your profile with photos.',
+        email: formData.email
+      } 
+    });
+
+  } catch (error) {
+    console.error('Error during registration:', error);
+    setSubmitError(`Registration failed: ${error.message}`);
+    setOpenSnackbar(true);
+  } finally {
+    setIsUploading(false);
+  }
+};
 
   const handleCloseSnackbar = () => {
     setOpenSnackbar(false);
@@ -699,22 +741,32 @@ function SignUpPage() {
                     <input
                       type="file"
                       hidden
-                      accept="image/*"
+                      accept="image/jpeg, image/png, image/gif" // Specify accepted types
                       multiple
                       onChange={handlePhotoUpload}
+                      disabled={isUploading} // Disable while uploading
                     />
-                    <Typography variant="body1" color="primary" textAlign="center">
-                      Click to upload photo
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary" textAlign="center">
-                      {previewUrls.length === 0 
-                        ? 'Add at least 2 photos'
-                        : `${previewUrls.length}/9 photos uploaded`}
-                    </Typography>
+                    {isUploading ? (
+                      <CircularProgress size={24} />
+                    ) : (
+                      <>
+                        <Typography variant="body1" color="primary" textAlign="center">
+                          Click to upload photo
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary" textAlign="center">
+                          {previewUrls.length === 0
+                            ? 'Add at least 2 photos'
+                            : `${previewUrls.length}/9 photos selected`}
+                        </Typography>
+                      </>
+                    )}
                   </ImageUploadBox>
                 </Grid>
               )}
             </Grid>
+            {submitError && (
+                <Alert severity="error" sx={{ mt: 2 }}>{submitError}</Alert>
+            )}
           </Box>
         );
 
@@ -779,6 +831,7 @@ function SignUpPage() {
             <Button
               variant="contained"
               onClick={activeStep === steps.length - 1 ? handleSubmit : handleNext}
+              disabled={isUploading} // Disable button during upload/submit
               sx={{
                 background: 'linear-gradient(45deg, #FE3C72 30%, #FF6036 90%)',
                 '&:hover': {
@@ -786,10 +839,15 @@ function SignUpPage() {
                 },
               }}
             >
-              {activeStep === steps.length - 1 ? 'Create Account' : 'Next'}
+              {isUploading ? <CircularProgress size={24} color="inherit" /> : (activeStep === steps.length - 1 ? 'Create Account' : 'Next')}
             </Button>
           </Box>
         </Paper>
+        <Snackbar open={openSnackbar} autoHideDuration={6000} onClose={handleCloseSnackbar}>
+          <Alert onClose={handleCloseSnackbar} severity="error" sx={{ width: '100%' }}>
+            {submitError}
+          </Alert>
+        </Snackbar>
       </Box>
     </Container>
   );
