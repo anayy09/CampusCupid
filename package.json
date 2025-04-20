@@ -1,0 +1,5 @@
+{
+  "devDependencies": {
+    "@cypress/react18": "^2.0.1"
+  }
+}

@@ -639,46 +639,7 @@ function DashboardPage() {
           <Typography 
             variant="h5" 
             sx={{ 
-              mb: 3, 
-              fontWeight: 600,
-              borderBottom: '2px solid rgba(254, 60, 114, 0.2)',
-              paddingBottom: 1
-            }}
-          >
-            Recent Activity
-          </Typography>
-          
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-            
-            <Box sx={{ 
-              p: 3, 
-              textAlign: 'center', 
-              backgroundColor: 'rgba(0, 0, 0, 0.02)', 
-              borderRadius: 2 
-            }}>
-              <Typography color="text.secondary">
-                No recent activity to show. Start matching with people to see activity here!
-              </Typography>
-              <Button 
-                variant="contained" 
-                color="primary"
-                onClick={handleFindMatches}
-                sx={{ 
-                  mt: 2,
-                  background: 'linear-gradient(45deg, #FE3C72 30%, #FF6036 90%)',
-                  textTransform: 'none',
-                  px: 4,
-                  py: 1,
-                  boxShadow: '0 4px 10px rgba(254, 60, 114, 0.25)',
-                  '&:hover': {
-                    background: 'linear-gradient(45deg, #E31C5F 30%, #E54A22 90%)',
-                    transform: 'translateY(-2px)',
-                    boxShadow: '0 6px 15px rgba(254, 60, 114, 0.35)'
-                  },
-                  transition: 'all 0.3s ease'
-                }}
-              >
-                Find Matches Now
+
               </Button>
             </Box>
           </Box>

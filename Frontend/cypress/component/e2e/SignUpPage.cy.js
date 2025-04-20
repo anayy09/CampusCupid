@@ -41,7 +41,7 @@ describe('Sign Up Page', () => {
   it('validates age is 18+ on basic info page', () => {
     // Fill form with underage birth date
     cy.get('input[name="firstName"]').type('Test User');
-    cy.get('input[type="email"]').type('test@example.com');
+    cy.get('input[type="email"]').type('test@testing.com');
     cy.get('input[type="password"]').first().type('password123');
     cy.get('input[type="password"]').last().type('password123');
     
@@ -83,7 +83,7 @@ describe('Sign Up Page', () => {
   it('completes the full signup flow successfully', () => {
     // Step 1: Basic Info
     cy.get('input[name="firstName"]').type('Test User');
-    cy.get('input[type="email"]').type('test@example.com');
+    cy.get('input[type="email"]').type('test@hello.com');
     cy.get('input[type="password"]').first().type('password123');
     cy.get('input[type="password"]').last().type('password123');
     

@@ -89,4 +89,3 @@ describe('Campus Cupid E2E Tests', () => {
     cy.url().should('eq', Cypress.config().baseUrl + '/');
   });
 });
-
