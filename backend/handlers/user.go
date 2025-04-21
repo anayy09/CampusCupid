@@ -1372,3 +1372,36 @@ func UnblockUser(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"message": "User unblocked successfully"})
 }
+
+// UnmatchUser removes the match relationship between two users
+// @Summary Unmatch a user
+// @Description Allows a user to unmatch another user they were previously matched with
+// @Tags matchmaking
+// @Security ApiKeyAuth
+// @Param user_id path uint true "Target user ID to unmatch"
+// @Produce json
+// @Success 200 {object} map[string]string "Unmatched successfully"
+// @Failure 400 {object} map[string]string "Invalid input"
+// @Failure 401 {object} map[string]string "Unauthorized"
+// @Router /unmatch/{user_id} [post]
+func UnmatchUser(c *gin.Context) {
+	currentUserID := c.GetInt("userID")
+
+	targetIDStr := c.Param("user_id")
+	targetID, err := strconv.ParseUint(targetIDStr, 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
+		return
+	}
+
+	// Update 'matched' status to false in both directions
+	database.DB.Model(&models.Interaction{}).
+		Where("user_id = ? AND target_id = ?", currentUserID, targetID).
+		Update("matched", false)
+
+	database.DB.Model(&models.Interaction{}).
+		Where("user_id = ? AND target_id = ?", targetID, currentUserID).
+		Update("matched", false)
+
+	c.JSON(http.StatusOK, gin.H{"message": "Unmatched successfully"})
+}
