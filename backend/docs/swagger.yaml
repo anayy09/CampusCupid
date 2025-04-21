@@ -188,7 +188,7 @@ definitions:
       updatedAt:
         type: string
     type: object
-host: campuscupid-backend.onrender.com
+host: campuscupid.onrender.com
 info:
   contact:
     email: support@campuscupid.com
