@@ -13,6 +13,15 @@ type ActivityEntry struct {
 	Timestamp time.Time `json:"timestamp"`
 }
 
+// GetActivityLog returns recent user activity (mocked for now)
+// @Summary Get user activity log
+// @Description Returns a list of recent user actions like likes, matches, profile updates.
+// @Tags users
+// @Security ApiKeyAuth
+// @Produce json
+// @Success 200 {object} map[string]interface{} "Activity list"
+// @Failure 401 {object} map[string]string "Unauthorized"
+// @Router /activity-log [get]
 func GetActivityLog(c *gin.Context) {
 	// Mocked activity log; replace with actual DB queries if needed
 	userID := c.GetInt("userID")
