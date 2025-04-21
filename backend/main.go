@@ -105,10 +105,10 @@ func main() {
 	r.GET("/activity-log", middleware.AuthMiddleware(), handlers.GetActivityLog)
 
 	// ADMIN REPORT VIEWER
-	// r.GET("/reports", middleware.AuthMiddleware(), handlers.GetAllReports)
+	r.GET("/reports", middleware.AuthMiddleware(), handlers.GetAllReports)
 
 	// UNMATCH A USER
-	// r.POST("/unmatch/:user_id", middleware.AuthMiddleware(), handlers.UnmatchUser)
+	r.POST("/unmatch/:user_id", middleware.AuthMiddleware(), handlers.UnmatchUser)
 
 	// Determine the port to run on (default to 8080 if not set)
 	port := os.Getenv("PORT")
