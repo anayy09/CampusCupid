@@ -74,6 +74,22 @@ definitions:
     - password
     - photos
     type: object
+  models.Report:
+    properties:
+      createdAt:
+        type: string
+      id:
+        type: integer
+      reason:
+        description: Why the report was made
+        type: string
+      reporterId:
+        description: The user submitting the report
+        type: integer
+      targetId:
+        description: The user being reported
+        type: integer
+    type: object
   models.ReportRequest:
     properties:
       reason:
@@ -201,6 +217,29 @@ info:
   title: CampusCupid API
   version: "1.0"
 paths:
+  /activity-log:
+    get:
+      description: Returns a list of recent user actions like likes, matches, profile
+        updates.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Activity list
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Get user activity log
+      tags:
+      - users
   /block/{target_id}:
     delete:
       description: Removes a target user from the authenticated user's blocked list
@@ -994,6 +1033,77 @@ paths:
       security:
       - ApiKeyAuth: []
       summary: Report a user
+      tags:
+      - matchmaking
+  /reports:
+    get:
+      description: Admin-only endpoint to list all submitted reports
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.Report'
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden - Admin only
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: View all user reports (Admin)
+      tags:
+      - admin
+  /unmatch/{user_id}:
+    post:
+      description: Allows a user to unmatch another user they were previously matched
+        with
+      parameters:
+      - description: Target user ID to unmatch
+        in: path
+        name: user_id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Unmatched successfully
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Invalid input
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Unmatch a user
       tags:
       - matchmaking
   /upload/photos:
