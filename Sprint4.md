@@ -9,9 +9,6 @@ Abhijeet Mallick (33790822), Rijul Bir Singh (97518637), Anay Sinhal (68789243),
 - **Frontend**: [[Link]](https://youtu.be/c-zNQAUXkj0)
 - **Backend**: [[Link]](https://youtu.be/Ny8jqhsQezc)
 
-Here’s the **“Detail Work Completed in Sprint 4”** section for your `Sprint4.md`, cleanly structured and split into **Frontend** and **Backend**, keeping tone, format, and flow consistent with your Sprint 3 doc:
-
-
 ### Work Completed in Sprint 4
 
 #### ✅ Frontend
