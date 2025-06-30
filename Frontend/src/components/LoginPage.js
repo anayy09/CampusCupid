@@ -9,8 +9,6 @@ import {
   Link,
   styled,
   CircularProgress,
-  Snackbar,
-  Alert,
   InputAdornment,
   IconButton
 } from '@mui/material';
@@ -57,7 +55,6 @@ function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [openSnackbar, setOpenSnackbar] = useState(false);
 
   const handleTogglePasswordVisibility = () => {
     setShowPassword((prev) => !prev);
@@ -74,19 +71,16 @@ function LoginPage() {
     // Enhanced validation
     if (!email) {
       setError('Email is required');
-      setOpenSnackbar(true);
       return;
     }
     
     if (!validateEmail(email)) {
       setError('Please enter a valid email address');
-      setOpenSnackbar(true);
       return;
     }
     
     if (!password) {
       setError('Password is required');
-      setOpenSnackbar(true);
       return;
     }
 
@@ -118,12 +112,7 @@ function LoginPage() {
       console.error('Login error:', err);
       const errorMessage = err.response?.data?.message || 'Login failed. Please check your credentials and try again.';
       setError(errorMessage);
-      setOpenSnackbar(true);
     }
-  };
-
-  const handleCloseSnackbar = () => {
-    setOpenSnackbar(false);
   };
 
   return (

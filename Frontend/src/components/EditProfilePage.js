@@ -24,7 +24,7 @@ import {
   Snackbar,
   useTheme
 } from '@mui/material';
-import { ArrowBack as ArrowBackIcon, PhotoCamera as PhotoCameraIcon } from '@mui/icons-material';
+import { ArrowBack as ArrowBackIcon } from '@mui/icons-material';
 
 const API_URL = 'localhost:8080';
 const DEFAULT_PROFILE_IMAGE = '/default-profile.jpg';

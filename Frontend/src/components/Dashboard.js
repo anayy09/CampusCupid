@@ -14,8 +14,6 @@ import {
   Alert,
   Stack,
   CircularProgress,
-  Tabs,
-  Tab,
   Chip,
   Dialog,
   DialogContent,
@@ -24,9 +22,9 @@ import {
   ImageListItem,
   useTheme
 } from '@mui/material';
-import { 
-  Edit as EditIcon, 
-  Person as ProfileIcon, 
+import {
+  Edit as EditIcon,
+  Person as ProfileIcon,
   Favorite as MatchIcon,
   Chat as ChatIcon,
   Settings as SettingsIcon,
@@ -82,14 +80,7 @@ function DashboardPage() {
     fetchUserProfile();
   }, [navigate]);
 
-  const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    localStorage.removeItem('userId');
-    navigate('/login');
-  };
-
-  const calculateAge = (dateOfBirth) => {
+    const calculateAge = (dateOfBirth) => {
     if (!dateOfBirth) return "?";
     const birthDate = new Date(dateOfBirth);
     const today = new Date();
@@ -694,7 +685,7 @@ function DashboardPage() {
                   <img
                     src={`${photoUrl}`}
                     srcSet={`${photoUrl}`}
-                    alt={`User photo ${index + 1}`}
+                    alt={`Profile ${index + 1}`.replace(/Profile /, '')} // Removed redundant word
                     loading="lazy"
                     style={{ borderRadius: '8px', display: 'block', width: '100%' }}
                   />
