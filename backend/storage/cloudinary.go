@@ -2,6 +2,7 @@ package storage
 
 import (
 	"context"
+	"errors"
 	"log"
 	"mime/multipart"
 	"os"
@@ -20,17 +21,13 @@ var (
 
 // InitCloudinary initializes the Cloudinary client
 func InitCloudinary() error {
-	// Get credentials from environment variables
-	cloudName := os.Getenv("CLOUDINARY_CLOUD_NAME")
-	apiKey := os.Getenv("CLOUDINARY_API_KEY")
-	apiSecret := os.Getenv("CLOUDINARY_API_SECRET")
-
-	if cloudName == "" || apiKey == "" || apiSecret == "" {
-		return logger.Output(2, "Cloudinary environment variables not set")
+	cloudinaryURL := os.Getenv("CLOUDINARY_URL")
+	if cloudinaryURL == "" {
+		return logger.Output(2, "Cloudinary environment variable CLOUDINARY_URL not set")
 	}
 
 	var err error
-	cld, err = cloudinary.NewFromParams(cloudName, apiKey, apiSecret)
+	cld, err = cloudinary.NewFromURL(cloudinaryURL)
 	if err != nil {
 		return err
 	}
@@ -50,6 +47,11 @@ func UploadImage(file *multipart.FileHeader, folder string) (string, error) {
 		return "", err
 	}
 	defer src.Close()
+
+	// Ensure 'cld' is initialized before using it
+	if cld == nil {
+		return "", errors.New("Cloudinary client is not initialized")
+	}
 
 	// Upload to Cloudinary
 	uploadParams := uploader.UploadParams{
