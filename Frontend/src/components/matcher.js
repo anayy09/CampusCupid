@@ -11,13 +11,24 @@ import {
   Paper,
   Chip,
   Avatar,
-  AppBar,
-  Toolbar,
   Snackbar,
   Alert,
-  useTheme
+  useTheme,
+  useMediaQuery,
+  Stack,
+  Card,
+  CardContent,
+  Fab,
+  LinearProgress
 } from '@mui/material';
-import { Close as CloseIcon, Favorite as FavoriteIcon, ArrowBack as ArrowBackIcon } from '@mui/icons-material';
+import { 
+  CloseRounded as CloseIcon, 
+  FavoriteRounded as FavoriteIcon, 
+  ArrowBackRounded as ArrowBackIcon,
+  InfoRounded as InfoIcon,
+  LocationOnRounded as LocationIcon,
+  StarRounded as StarIcon
+} from '@mui/icons-material';
 import NavBar from './common/NavBar';
 
 const API_URL = 'http://localhost:8080';
@@ -25,6 +36,7 @@ const DEFAULT_PROFILE_IMAGE = '/default-profile.jpg';
 
 function MatcherPage() {
   const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const user = JSON.parse(localStorage.getItem('user'));
   const navigate = useNavigate();
   const [currentProfile, setCurrentProfile] = useState(null);
@@ -36,6 +48,7 @@ function MatcherPage() {
   const cardRef = useRef(null);
   const [imageLoadError, setImageLoadError] = useState(false);
   const [matchAlert, setMatchAlert] = useState({ open: false, message: '' });
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
   const nextProfile = useCallback(() => {
     const currentIndex = profiles.findIndex(profile => profile.id === currentProfile.id);
@@ -226,224 +239,356 @@ function MatcherPage() {
   return (
     <>
       <NavBar user={user} />
-      <Box sx={{ flexGrow: 1, minHeight: '100vh', bgcolor: '#f8f8f8' }}>
-        <AppBar position="static" sx={{ bgcolor: 'white', boxShadow: '0 2px 10px rgba(0, 0, 0, 0.1)' }}>
-          <Toolbar>
-            <IconButton 
-              edge="start" 
-              color="inherit" 
-              aria-label="back to dashboard"
-              onClick={handleBackToDashboard}
-              sx={{ color: theme.palette.primary.main }}
+      <Box sx={{ 
+        backgroundColor: 'background.default', 
+        minHeight: '100vh',
+        pt: 10
+      }}>
+        <Container maxWidth="sm" sx={{ py: 4 }}>
+          {/* Header */}
+          <Box sx={{ textAlign: 'center', mb: 4 }}>
+            <Typography 
+              variant="h3" 
+              sx={{ 
+                fontWeight: 800,
+                mb: 1,
+                fontSize: { xs: '2rem', md: '2.75rem' }
+              }}
+              className="gradient-text"
             >
-              <ArrowBackIcon />
-            </IconButton>
+              Discover
+            </Typography>
             <Typography 
               variant="h6" 
-              component="div" 
               sx={{ 
-                flexGrow: 1, 
-                textAlign: 'center',
-                fontWeight: 'bold',
-                color: theme.palette.primary.main
+                color: 'text.secondary',
+                fontWeight: 400
               }}
             >
-              Find Matches
+              Find your perfect match
             </Typography>
-          </Toolbar>
-        </AppBar>
+          </Box>
 
-        <Container 
-          maxWidth="sm" 
-          sx={{ 
-            pt: 4, 
-            pb: 4, 
-            display: 'flex', 
-            flexDirection: 'column',
-            justifyContent: loading || !currentProfile ? 'center' : 'flex-start',
-            minHeight: 'calc(100vh - 64px)'
-          }}
-        >
           {loading ? (
-            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-              <CircularProgress color="primary" />
-              <Typography variant="body1" sx={{ mt: 2 }}>
-                Finding potential matches...
+            <Card 
+              elevation={0}
+              sx={{ 
+                p: 6, 
+                textAlign: 'center',
+                border: `1px solid ${theme.palette.divider}`,
+                borderRadius: theme.customTokens.borderRadius.xl,
+              }}
+            >
+              <CircularProgress color="primary" size={48} />
+              <Typography variant="h6" sx={{ mt: 2, color: 'text.secondary' }}>
+                Finding amazing people for you...
               </Typography>
-            </Box>
+            </Card>
           ) : !currentProfile ? (
-            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
-              <Typography variant="h5" sx={{ mb: 2 }}>No more profiles to show</Typography>
+            <Card 
+              elevation={0}
+              sx={{ 
+                p: 6, 
+                textAlign: 'center',
+                border: `1px solid ${theme.palette.divider}`,
+                borderRadius: theme.customTokens.borderRadius.xl,
+              }}
+            >
+              <StarIcon sx={{ fontSize: 64, color: 'primary.main', mb: 2 }} />
+              <Typography variant="h5" sx={{ mb: 2, fontWeight: 700 }}>
+                You're all caught up!
+              </Typography>
               <Typography variant="body1" sx={{ mb: 4, color: 'text.secondary' }}>
                 We'll notify you when new matches become available
               </Typography>
               <Button 
                 variant="contained" 
-                color="primary"
                 onClick={() => navigate('/dashboard')}
                 sx={{
-                  background: 'linear-gradient(45deg, #FE3C72 30%, #FF6036 90%)',
-                  boxShadow: '0 4px 12px rgba(254, 60, 114, 0.3)',
+                  background: theme.customTokens.gradients.primary,
                   px: 4,
-                  py: 1.5
+                  py: 2,
+                  textTransform: 'none',
+                  fontWeight: 600,
                 }}
               >
                 Back to Dashboard
               </Button>
-            </Box>
+            </Card>
           ) : (
-            <>
-              <Box sx={{ position: 'relative', mb: 4 }}>
-                <Paper
+            <Stack spacing={3}>
+              {/* Profile Card */}
+              <Box sx={{ position: 'relative' }}>
+                <Card
                   ref={cardRef}
-                  elevation={8}
+                  elevation={0}
                   sx={{
-                    height: '500px',
-                    borderRadius: '16px',
-                    overflow: 'hidden', 
+                    height: { xs: 500, sm: 600 },
+                    borderRadius: theme.customTokens.borderRadius.xl,
+                    overflow: 'hidden',
                     position: 'relative',
+                    border: `1px solid ${theme.palette.divider}`,
+                    cursor: 'grab',
+                    '&:active': { cursor: 'grabbing' },
                     ...getCardStyle()
                   }}
                   onTouchStart={handleTouchStart}
                   onTouchMove={handleTouchMove}
                   onTouchEnd={handleTouchEnd}
                 >
-                  {imageLoadError ? (
-                    <Box
-                      sx={{
-                        height: '100%',
-                        width: '100%',
-                        backgroundColor: '#f0f0f0',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        justifyContent: 'center',
-                        alignItems: 'center',
-                        p: 3
-                      }}
-                    >
-                      <Avatar 
-                        sx={{ 
-                          width: 100, 
-                          height: 100, 
-                          mb: 2,
-                          bgcolor: theme.palette.primary.light
+                  {/* Profile Images */}
+                  <Box sx={{ position: 'relative', height: '70%' }}>
+                    {imageLoadError ? (
+                      <Box
+                        sx={{
+                          height: '100%',
+                          width: '100%',
+                          backgroundColor: 'background.paper',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          justifyContent: 'center',
+                          alignItems: 'center',
+                          p: 3
                         }}
                       >
-                        {currentProfile.firstName && currentProfile.firstName.charAt(0)}
-                      </Avatar>
-                      <Typography variant="body1">Profile picture not available</Typography>
-                    </Box>
-                  ) : (
-                    <Box
-                      sx={{
-                        height: '100%',
-                        width: '100%',
-                        position: 'relative',
-                      }}
-                    >
-                      <img
-                        src={currentProfile.profilePictureURL || DEFAULT_PROFILE_IMAGE}
-                        alt={`${currentProfile.firstName}'s profile`}
-                        onError={handleImageError}
-                        style={{
-                          width: '100%',
-                          height: '100%',
-                          objectFit: 'cover',
-                        }}
-                      />
-                    </Box>
-                  )}
-                  
-                  <Box 
-                    sx={{
-                      position: 'absolute',
-                      bottom: 0,
-                      left: 0,
-                      right: 0,
-                      background: 'linear-gradient(to top, rgba(0,0,0,0.8), rgba(0,0,0,0.4) 50%, rgba(0,0,0,0))',
-                      padding: 3,
-                      color: 'white',
-                    }}
-                  >
-                    <Typography variant="h4" component="h2" sx={{ fontWeight: 'bold' }}>
-                      {currentProfile.firstName}, {calculateAge(currentProfile.dateOfBirth)}
-                    </Typography>
-                    
-                    {currentProfile.lookingFor && (
-                      <Typography variant="body1" sx={{ mt: 0.5, opacity: 0.9 }}>
-                        Looking for: {currentProfile.lookingFor}
-                      </Typography>
-                    )}
-                    
-                    {currentProfile.interests && currentProfile.interests.length > 0 && (
-                      <Box sx={{ mt: 1.5, display: 'flex', flexWrap: 'wrap', gap: 0.8 }}>
-                        {currentProfile.interests.map((interest, index) => (
-                          <Chip 
-                            key={index} 
-                            label={interest} 
-                            size="small" 
-                            sx={{ 
-                              bgcolor: 'rgba(255, 255, 255, 0.2)',
-                              color: 'white',
-                              fontSize: '0.75rem'
-                            }} 
-                          />
-                        ))}
+                        <Avatar 
+                          sx={{ 
+                            width: 100, 
+                            height: 100, 
+                            mb: 2,
+                            bgcolor: 'primary.light'
+                          }}
+                        >
+                          {currentProfile.firstName?.[0]}
+                        </Avatar>
+                        <Typography variant="body1" color="text.secondary">
+                          Profile picture not available
+                        </Typography>
                       </Box>
+                    ) : (
+                      <>
+                        <img
+                          src={currentProfile.photos?.[currentImageIndex] || currentProfile.profilePictureURL || DEFAULT_PROFILE_IMAGE}
+                          alt={`${currentProfile.firstName}'s profile`}
+                          onError={handleImageError}
+                          style={{
+                            width: '100%',
+                            height: '100%',
+                            objectFit: 'cover',
+                          }}
+                        />
+                        
+                        {/* Image indicators */}
+                        {currentProfile.photos && currentProfile.photos.length > 1 && (
+                          <Box 
+                            sx={{ 
+                              position: 'absolute', 
+                              top: 16, 
+                              left: 16, 
+                              right: 16,
+                              display: 'flex',
+                              gap: 1
+                            }}
+                          >
+                            {currentProfile.photos.map((_, index) => (
+                              <Box
+                                key={index}
+                                sx={{
+                                  flex: 1,
+                                  height: 4,
+                                  borderRadius: 2,
+                                  backgroundColor: index <= currentImageIndex ? 'white' : 'rgba(255, 255, 255, 0.3)',
+                                  transition: 'all 0.3s ease'
+                                }}
+                              />
+                            ))}
+                          </Box>
+                        )}
+                      </>
                     )}
                   </Box>
-                </Paper>
+
+                  {/* Profile Info */}
+                  <CardContent sx={{ height: '30%', p: 3 }}>
+                    <Stack spacing={2}>
+                      <Box>
+                        <Typography 
+                          variant="h4" 
+                          sx={{ 
+                            fontWeight: 700,
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 1
+                          }}
+                        >
+                          {currentProfile.firstName}
+                          <Typography 
+                            component="span" 
+                            sx={{ 
+                              color: 'primary.main',
+                              fontSize: 'inherit',
+                              fontWeight: 'inherit'
+                            }}
+                          >
+                            , {calculateAge(currentProfile.dateOfBirth)}
+                          </Typography>
+                        </Typography>
+                        
+                        {currentProfile.location?.city && (
+                          <Box 
+                            sx={{ 
+                              display: 'flex', 
+                              alignItems: 'center',
+                              gap: 0.5,
+                              mt: 0.5
+                            }}
+                          >
+                            <LocationIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
+                            <Typography variant="body2" color="text.secondary">
+                              {currentProfile.location.city}
+                            </Typography>
+                          </Box>
+                        )}
+                      </Box>
+
+                      {currentProfile.bio && (
+                        <Typography 
+                          variant="body1" 
+                          sx={{ 
+                            color: 'text.secondary',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            display: '-webkit-box',
+                            WebkitLineClamp: 2,
+                            WebkitBoxOrient: 'vertical',
+                            lineHeight: 1.5
+                          }}
+                        >
+                          {currentProfile.bio}
+                        </Typography>
+                      )}
+
+                      {currentProfile.interests && currentProfile.interests.length > 0 && (
+                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                          {currentProfile.interests.slice(0, 4).map((interest, index) => (
+                            <Chip 
+                              key={index}
+                              label={interest}
+                              size="small"
+                              sx={{ 
+                                backgroundColor: 'rgba(233, 30, 99, 0.08)',
+                                color: 'primary.main',
+                                fontWeight: 500,
+                                fontSize: '0.75rem'
+                              }}
+                            />
+                          ))}
+                          {currentProfile.interests.length > 4 && (
+                            <Chip 
+                              label={`+${currentProfile.interests.length - 4}`}
+                              size="small"
+                              variant="outlined"
+                              sx={{ 
+                                borderColor: 'primary.main',
+                                color: 'primary.main',
+                                fontSize: '0.75rem'
+                              }}
+                            />
+                          )}
+                        </Box>
+                      )}
+                    </Stack>
+                  </CardContent>
+                </Card>
               </Box>
-              
-              <Box sx={{ display: 'flex', justifyContent: 'center', gap: 4, mb: 2 }}>
-                <IconButton 
+
+              {/* Action Buttons */}
+              <Box 
+                sx={{ 
+                  display: 'flex', 
+                  justifyContent: 'center', 
+                  gap: 4,
+                  px: 2
+                }}
+              >
+                <Fab
                   onClick={handleDislike}
-                  sx={{ 
-                    backgroundColor: 'white', 
-                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-                    p: 2,
-                    '&:hover': { backgroundColor: '#F5F5F5' }
+                  sx={{
+                    backgroundColor: 'white',
+                    color: 'error.main',
+                    border: `2px solid ${theme.palette.error.main}`,
+                    width: 64,
+                    height: 64,
+                    '&:hover': {
+                      backgroundColor: 'error.main',
+                      color: 'white',
+                      transform: 'scale(1.1)',
+                    },
+                    transition: 'all 0.2s ease'
                   }}
                 >
-                  <CloseIcon fontSize="large" sx={{ color: '#FE3C72' }} />
-                </IconButton>
-                
-                <IconButton 
+                  <CloseIcon sx={{ fontSize: 32 }} />
+                </Fab>
+
+                <Fab
+                  onClick={() => {/* Handle info/details */}}
+                  sx={{
+                    backgroundColor: 'white',
+                    color: 'primary.main',
+                    border: `2px solid ${theme.palette.primary.main}`,
+                    width: 56,
+                    height: 56,
+                    '&:hover': {
+                      backgroundColor: 'primary.main',
+                      color: 'white',
+                      transform: 'scale(1.1)',
+                    },
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  <InfoIcon />
+                </Fab>
+
+                <Fab
                   onClick={handleLike}
-                  sx={{ 
-                    backgroundColor: 'white', 
-                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-                    p: 2,
-                    '&:hover': { backgroundColor: '#F5F5F5' }
+                  sx={{
+                    background: theme.customTokens.gradients.primary,
+                    color: 'white',
+                    width: 64,
+                    height: 64,
+                    '&:hover': {
+                      transform: 'scale(1.1)',
+                      boxShadow: '0 8px 25px rgba(233, 30, 99, 0.3)',
+                    },
+                    transition: 'all 0.2s ease'
                   }}
                 >
-                  <FavoriteIcon fontSize="large" sx={{ color: '#24E5A0' }} />
-                </IconButton>
+                  <FavoriteIcon sx={{ fontSize: 32 }} />
+                </Fab>
               </Box>
-              
-              <Typography variant="body2" sx={{ textAlign: 'center', color: 'grey.600' }}>
-                Swipe left/right or use arrow keys to navigate
-              </Typography>
-            </>
+            </Stack>
           )}
         </Container>
-        
-        <Snackbar
-          open={matchAlert.open}
-          autoHideDuration={5000}
-          onClose={handleCloseAlert}
-          anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
-        >
-          <Alert
-            onClose={handleCloseAlert}
-            severity="success"
-            variant="filled"
-            sx={{ width: '100%' }}
-          >
-            {matchAlert.message}
-          </Alert>
-        </Snackbar>
       </Box>
+
+      {/* Match Alert */}
+      <Snackbar 
+        open={matchAlert.open} 
+        autoHideDuration={4000} 
+        onClose={handleCloseAlert}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+      >
+        <Alert 
+          onClose={handleCloseAlert} 
+          severity="success" 
+          sx={{ 
+            width: '100%',
+            borderRadius: theme.customTokens.borderRadius.medium,
+          }}
+        >
+          {matchAlert.message}
+        </Alert>
+      </Snackbar>
     </>
   );
 }
