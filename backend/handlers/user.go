@@ -854,80 +854,109 @@ func GetConversations(c *gin.Context) {
 		return
 	}
 
-	// Find all unique users that the current user has exchanged messages with
-	var senderIDs []uint
-	database.DB.Model(&models.Message{}).
-		Where("receiver_id = ?", currentUserID).
-		Distinct("sender_id").
-		Pluck("sender_id", &senderIDs)
-
-	var receiverIDs []uint
-	database.DB.Model(&models.Message{}).
-		Where("sender_id = ?", currentUserID).
-		Distinct("receiver_id").
-		Pluck("receiver_id", &receiverIDs)
-
-	// Combine and deduplicate user IDs
-	userIDsMap := make(map[uint]bool)
-	for _, id := range senderIDs {
-		userIDsMap[id] = true
-	}
-	for _, id := range receiverIDs {
-		userIDsMap[id] = true
+	// Use a more efficient query to get all unique conversation partners
+	type ConversationData struct {
+		UserID              uint      `json:"user_id"`
+		FirstName           string    `json:"first_name"`
+		ProfilePictureURL   string    `json:"profile_picture_url"`
+		LastMessageID       uint      `json:"last_message_id"`
+		LastMessageContent  string    `json:"last_message_content"`
+		LastMessageTime     time.Time `json:"last_message_time"`
+		LastMessageSenderID uint      `json:"last_message_sender_id"`
+		UnreadCount         int64     `json:"unread_count"`
 	}
 
-	var userIDs []uint
-	for id := range userIDsMap {
-		userIDs = append(userIDs, id)
-	}
+	var conversations []ConversationData
 
-	if len(userIDs) == 0 {
-		c.JSON(http.StatusOK, []map[string]interface{}{})
-		return
-	}
+	// Single optimized query to get all conversation data
+	query := `
+		WITH conversation_partners AS (
+			SELECT DISTINCT 
+				CASE 
+					WHEN sender_id = ? THEN receiver_id 
+					ELSE sender_id 
+				END as partner_id
+			FROM messages 
+			WHERE sender_id = ? OR receiver_id = ?
+		),
+		last_messages AS (
+			SELECT DISTINCT ON (
+				CASE 
+					WHEN sender_id = ? THEN receiver_id 
+					ELSE sender_id 
+				END
+			)
+				CASE 
+					WHEN sender_id = ? THEN receiver_id 
+					ELSE sender_id 
+				END as partner_id,
+				id as last_message_id,
+				content as last_message_content,
+				created_at as last_message_time,
+				sender_id as last_message_sender_id
+			FROM messages 
+			WHERE sender_id = ? OR receiver_id = ?
+			ORDER BY 
+				CASE 
+					WHEN sender_id = ? THEN receiver_id 
+					ELSE sender_id 
+				END,
+				created_at DESC
+		),
+		unread_counts AS (
+			SELECT 
+				sender_id as partner_id,
+				COUNT(*) as unread_count
+			FROM messages 
+			WHERE receiver_id = ? AND read = false
+			GROUP BY sender_id
+		)
+		SELECT 
+			u.id as user_id,
+			u.first_name,
+			u.profile_picture_url,
+			lm.last_message_id,
+			lm.last_message_content,
+			lm.last_message_time,
+			lm.last_message_sender_id,
+			COALESCE(uc.unread_count, 0) as unread_count
+		FROM conversation_partners cp
+		JOIN users u ON u.id = cp.partner_id
+		JOIN last_messages lm ON lm.partner_id = cp.partner_id
+		LEFT JOIN unread_counts uc ON uc.partner_id = cp.partner_id
+		ORDER BY lm.last_message_time DESC
+	`
 
-	// Get user information for each conversation
-	var users []models.User
-	if err := database.DB.Where("id IN ?", userIDs).Find(&users).Error; err != nil {
+	if err := database.DB.Raw(query,
+		currentUserID, currentUserID, currentUserID, // conversation_partners CTE
+		currentUserID, currentUserID, currentUserID, currentUserID, currentUserID, // last_messages CTE
+		currentUserID, // unread_counts CTE
+	).Scan(&conversations).Error; err != nil {
+		logger.Printf("Failed to retrieve conversations for user %v: %v", currentUserID, err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve conversations"})
 		return
 	}
 
-	// Prepare response with last message and unread count for each conversation
-	conversations := make([]map[string]interface{}, 0, len(users))
-	for _, user := range users {
-		// Get last message
-		var lastMessage models.Message
-		if err := database.DB.Where(
-			"(sender_id = ? AND receiver_id = ?) OR (sender_id = ? AND receiver_id = ?)",
-			currentUserID, user.ID, user.ID, currentUserID,
-		).Order("created_at DESC").First(&lastMessage).Error; err != nil {
-			continue
-		}
-
-		// Count unread messages
-		var unreadCount int64
-		database.DB.Model(&models.Message{}).
-			Where("sender_id = ? AND receiver_id = ? AND read = ?", user.ID, currentUserID, false).
-			Count(&unreadCount)
-
-		conversations = append(conversations, map[string]interface{}{
+	// Format response
+	response := make([]map[string]interface{}, len(conversations))
+	for i, conv := range conversations {
+		response[i] = map[string]interface{}{
 			"user": map[string]interface{}{
-				"id":                user.ID,
-				"firstName":         user.FirstName,
-				"profilePictureURL": user.ProfilePictureURL,
+				"id":                conv.UserID,
+				"firstName":         conv.FirstName,
+				"profilePictureURL": conv.ProfilePictureURL,
 			},
 			"lastMessage": map[string]interface{}{
-				"id":         lastMessage.ID,
-				"content":    lastMessage.Content,
-				"created_at": lastMessage.CreatedAt,
-				"sender_id":  lastMessage.SenderID,
+				"id":         conv.LastMessageID,
+				"content":    conv.LastMessageContent,
+				"created_at": conv.LastMessageTime,
+				"sender_id":  conv.LastMessageSenderID,
 			},
-			"unreadCount": unreadCount,
-		})
+			"unreadCount": conv.UnreadCount,
+		}
 	}
 
-	c.JSON(http.StatusOK, conversations)
+	c.JSON(http.StatusOK, response)
 }
 
 // LikeUser handles when a user likes another user
