@@ -95,15 +95,12 @@ const suggestedInterests = [
   'Gardening'
 ];
 
-const API_URL = 'localhost:8080';
+const API_URL = 'http://localhost:8080'; // Updated to include URL scheme
 console.log('API URL:', API_URL); // Added for debugging
 
 function SignUpPage() {
   const theme = useTheme();
   const navigate = useNavigate();
-  const navigateToHome = () => {
-    navigate('/');
-  };
 
   const [activeStep, setActiveStep] = useState(0);
   const [formData, setFormData] = useState({

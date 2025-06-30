@@ -36,7 +36,7 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import NavBar from './common/NavBar';
 
-const API_URL = 'localhost:8080';
+const API_URL = 'http://localhost:8080';
 // Use the first uploaded photo as profile image when available, or fall back to default
 const DEFAULT_PROFILE_IMAGE = '/default-profile.jpg';
 

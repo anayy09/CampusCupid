@@ -47,7 +47,7 @@ const StyledTextField = styled(TextField)({
 });
 
 // Backend API base URL - use environment variable
-const API_URL = 'localhost:8080';
+const API_URL = 'http://localhost:8080';
 function LoginPage() {
   const navigate = useNavigate();
   const [email, setEmail] = useState('');

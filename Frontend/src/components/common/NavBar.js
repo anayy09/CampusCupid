@@ -326,7 +326,7 @@ const NavBar = ({ user }) => {
             '& .MuiPaper-root': {
               borderRadius: 2,
               minWidth: 180,
-              boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15)'
+              boxShadow: theme.shadows[3] // Changed elevation to 3
             }
           }}
         >

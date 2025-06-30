@@ -19,9 +19,8 @@ import {
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import NavBar from './common/NavBar';
-import ThemeProvider from './common/ThemeProvider';
 // API URL
-const API_URL = 'localhost:8080';
+const API_URL = 'http://localhost:8080';
 
 function SettingsPage() {
   const navigate = useNavigate();

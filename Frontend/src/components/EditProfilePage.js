@@ -26,7 +26,7 @@ import {
 } from '@mui/material';
 import { ArrowBack as ArrowBackIcon } from '@mui/icons-material';
 
-const API_URL = 'localhost:8080';
+const API_URL = 'http://localhost:8080';
 const DEFAULT_PROFILE_IMAGE = '/default-profile.jpg';
 
 function EditProfilePage() {

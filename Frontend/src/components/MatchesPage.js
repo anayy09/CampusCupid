@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
-  Container,
   Typography,
   Box,
   Paper,
@@ -40,7 +39,7 @@ import axios from 'axios';
 import { format } from 'date-fns';
 import NavBar from './common/NavBar';
 
-const API_URL = 'localhost:8080';
+const API_URL = 'http://localhost:8080';
 const DEFAULT_PROFILE_IMAGE = '/default-profile.jpg';
 
 function MatchesPage() {
