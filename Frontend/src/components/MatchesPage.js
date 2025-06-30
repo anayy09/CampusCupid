@@ -68,7 +68,7 @@ function MatchesPage() {
   const [showMobileConversations, setShowMobileConversations] = useState(true);
   const [tabValue, setTabValue] = useState(0);
 
-  const fetchConversations = useCallback(async () => {
+  const fetchConversations = useCallback(async (shouldSetDefaultMatch = false) => {
     try {
       const token = localStorage.getItem('token');
       if (!token) {
@@ -83,8 +83,8 @@ function MatchesPage() {
       if (response.data && Array.isArray(response.data)) {
         setConversations(response.data);
 
-        // If there are conversations and no selected match yet, select the first one by default
-        if (response.data.length > 0 && !selectedMatch) {
+        // Only set default match if explicitly requested and no match is selected
+        if (shouldSetDefaultMatch && response.data.length > 0 && !selectedMatch) {
           setSelectedMatch({
             id: response.data[0].user.id,
             firstName: response.data[0].user.firstName,
@@ -102,7 +102,7 @@ function MatchesPage() {
         navigate('/login');
       }
     }
-  }, [navigate, selectedMatch]);
+  }, [navigate]); // Remove selectedMatch dependency
 
   // New function to fetch all matches including those without messages
   const fetchAllMatches = useCallback(async () => {
@@ -177,9 +177,9 @@ function MatchesPage() {
 
   // Fetch all data on component mount
   useEffect(() => {
-    fetchConversations();
+    fetchConversations(true); // Pass true to set default match on first load
     fetchAllMatches();
-  }, [fetchConversations, fetchAllMatches]);
+  }, []); // Remove fetchConversations and fetchAllMatches from dependencies
 
   // Fetch messages when a match is selected
   useEffect(() => {
