@@ -50,7 +50,7 @@ func UploadImage(file *multipart.FileHeader, folder string) (string, error) {
 
 	// Ensure 'cld' is initialized before using it
 	if cld == nil {
-		return "", errors.New("Cloudinary client is not initialized")
+		return "", errors.New("cloudinary client is not initialized")
 	}
 
 	// Upload to Cloudinary
