@@ -18,6 +18,7 @@ import {
   IconButton,
   Grid,
   Card,
+  CardContent,
   useMediaQuery,
   Snackbar,
   Alert,
@@ -26,13 +27,19 @@ import {
   Tab,
   Chip,
   Stack,
-  useTheme
+  useTheme,
+  Container,
+  Fab
 } from '@mui/material';
 import {
-  Send as SendIcon,
-  ArrowBack as ArrowBackIcon,
-  Forum as ForumIcon,
-  Favorite as FavoriteIcon,
+  SendRounded as SendIcon,
+  ArrowBackRounded as ArrowBackIcon,
+  ForumRounded as ForumIcon,
+  FavoriteRounded as FavoriteIcon,
+  SearchRounded as SearchIcon,
+  PersonRounded as PersonIcon,
+  ChatRounded as ChatIcon,
+  StarRounded as StarIcon
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
@@ -769,62 +776,127 @@ function MatchesPage() {
   };
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
-      <AppBar position="static" sx={{ bgcolor: 'white', boxShadow: '0 2px 10px rgba(0, 0, 0, 0.1)' }}>
-        <Toolbar>
-          <IconButton
-            edge="start"
-            color="inherit"
-            aria-label="back to dashboard"
-            onClick={handleBackToDashboard}
-            sx={{ color: theme.palette.primary.main }}
-          >
-            <ArrowBackIcon />
-          </IconButton>
-          <Typography
-            variant="h6"
-            component="div"
-            sx={{
-              flexGrow: 1,
-              textAlign: 'center',
-              fontWeight: 'bold',
-              color: theme.palette.primary.main
-            }}
-          >
-            Your Matches
-          </Typography>
-        </Toolbar>
-      </AppBar>
+    <>
+      <NavBar user={user} />
+      <Box sx={{ 
+        backgroundColor: 'background.default', 
+        minHeight: '100vh',
+        pt: 10
+      }}>
+        <Container maxWidth="xl" sx={{ py: 4 }}>
+          {/* Header */}
+          <Box sx={{ textAlign: 'center', mb: 4 }}>
+            <Typography 
+              variant="h3" 
+              sx={{ 
+                fontWeight: 800,
+                mb: 1,
+                fontSize: { xs: '2rem', md: '2.75rem' }
+              }}
+              className="gradient-text"
+            >
+              Messages
+            </Typography>
+            <Typography 
+              variant="h6" 
+              sx={{ 
+                color: 'text.secondary',
+                fontWeight: 400
+              }}
+            >
+              Connect with your matches
+            </Typography>
+          </Box>
 
-      <Box sx={{ flexGrow: 1, display: 'flex', overflow: 'hidden' }}>
-        {/* Mobile View: Show either conversations or messages */}
-        {isMobile ? (
-          showMobileConversations ? (
-            <Box sx={{ width: '100%', display: 'flex', flexDirection: 'column' }}>
-              {renderConversations()}
-            </Box>
+          {loading ? (
+            <Card 
+              elevation={0}
+              sx={{ 
+                p: 6, 
+                textAlign: 'center',
+                border: `1px solid ${theme.palette.divider}`,
+                borderRadius: theme.customTokens.borderRadius.xl,
+              }}
+            >
+              <CircularProgress color="primary" size={48} />
+              <Typography variant="h6" sx={{ mt: 2, color: 'text.secondary' }}>
+                Loading your conversations...
+              </Typography>
+            </Card>
           ) : (
-            <Box sx={{ width: '100%', display: 'flex', flexDirection: 'column' }}>
-              {renderMessages()}
-            </Box>
-          )
-        ) : (
-          // Desktop View: Show both conversations and messages side by side
-          <Grid container sx={{ flexGrow: 1 }}>
-            <Grid item xs={4} sx={{ borderRight: '1px solid rgba(0, 0, 0, 0.12)', height: 'calc(100vh - 64px)' }}>
-              <Card sx={{ height: '100%', boxShadow: 'none', borderRadius: 0 }}>
-                <Box sx={{ height: '100%', overflowY: 'auto' }}>
-                  {renderConversations()}
-                </Box>
-              </Card>
+            <Grid container spacing={4}>
+              {/* Mobile View: Show either conversations or messages */}
+              {isMobile ? (
+                showMobileConversations ? (
+                  <Grid item xs={12}>
+                    <Paper
+                      elevation={0}
+                      sx={{
+                        borderRadius: theme.customTokens.borderRadius.xl,
+                        border: `1px solid ${theme.palette.divider}`,
+                        overflow: 'hidden',
+                        height: 'calc(100vh - 200px)',
+                      }}
+                    >
+                      {renderConversations()}
+                    </Paper>
+                  </Grid>
+                ) : (
+                  <Grid item xs={12}>
+                    <Paper
+                      elevation={0}
+                      sx={{
+                        borderRadius: theme.customTokens.borderRadius.xl,
+                        border: `1px solid ${theme.palette.divider}`,
+                        overflow: 'hidden',
+                        height: 'calc(100vh - 200px)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                      }}
+                    >
+                      {renderMessages()}
+                    </Paper>
+                  </Grid>
+                )
+              ) : (
+                // Desktop View: Show both conversations and messages side by side
+                <>
+                  <Grid item xs={12} md={4}>
+                    <Paper
+                      elevation={0}
+                      sx={{
+                        borderRadius: theme.customTokens.borderRadius.xl,
+                        border: `1px solid ${theme.palette.divider}`,
+                        overflow: 'hidden',
+                        height: 'calc(100vh - 200px)',
+                      }}
+                    >
+                      {renderConversations()}
+                    </Paper>
+                  </Grid>
+                  <Grid item xs={12} md={8}>
+                    <Paper
+                      elevation={0}
+                      sx={{
+                        borderRadius: theme.customTokens.borderRadius.xl,
+                        border: `1px solid ${theme.palette.divider}`,
+                        overflow: 'hidden',
+                        height: 'calc(100vh - 200px)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                      }}
+                    >
+                      {renderMessages()}
+                    </Paper>
+                  </Grid>
+                </>
+              )}
             </Grid>
-            <Grid item xs={8} sx={{ height: 'calc(100vh - 64px)', display: 'flex', flexDirection: 'column' }}>
-              {renderMessages()}
-            </Grid>
-          </Grid>
-        )}
+          )}
+        </Container>
       </Box>
 
+      {/* Error Snackbar */}
       <Snackbar
         open={openSnackbar}
         autoHideDuration={6000}
@@ -834,12 +906,15 @@ function MatchesPage() {
         <Alert
           onClose={handleCloseSnackbar}
           severity="error"
-          sx={{ width: '100%' }}
+          sx={{ 
+            width: '100%',
+            borderRadius: theme.customTokens.borderRadius.medium,
+          }}
         >
           {error}
         </Alert>
       </Snackbar>
-    </Box>
+    </>
   );
 }
 
