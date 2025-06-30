@@ -16,16 +16,19 @@ import {
   ListItem,
   ListItemIcon,
   ListItemText,
-  Divider
+  Divider,
+  Badge,
+  Chip
 } from '@mui/material';
 import { 
-  Menu as MenuIcon, 
-  Person as PersonIcon, 
-  Favorite as FavoriteIcon, 
-  Chat as ChatIcon,
-  Settings as SettingsIcon,
-  Logout as LogoutIcon,
-  Home as HomeIcon
+  MenuRounded as MenuIcon, 
+  PersonRounded as PersonIcon, 
+  FavoriteRounded as FavoriteIcon, 
+  ChatRounded as ChatIcon,
+  SettingsRounded as SettingsIcon,
+  LogoutRounded as LogoutIcon,
+  HomeRounded as HomeIcon,
+  NotificationsRounded as NotificationsIcon
 } from '@mui/icons-material';
 import { useTheme } from '@mui/material/styles';
 
@@ -33,7 +36,7 @@ const NavBar = ({ user }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   
   const [anchorEl, setAnchorEl] = useState(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -60,77 +63,90 @@ const NavBar = ({ user }) => {
   
   const isAuthenticated = !!localStorage.getItem('token');
   const isPublicPage = ['/', '/login', '/signup'].includes(location.pathname);
+
+  const navigationItems = [
+    { label: 'Dashboard', path: '/dashboard', icon: <PersonIcon />, active: location.pathname === '/dashboard' },
+    { label: 'Discover', path: '/matcher', icon: <FavoriteIcon />, active: location.pathname === '/matcher' },
+    { label: 'Messages', path: '/matches', icon: <ChatIcon />, active: location.pathname === '/matches', badge: 3 },
+  ];
   
-  // If on public pages and not authenticated, show login/signup buttons
+  // Public pages navbar
   if (isPublicPage && !isAuthenticated) {
     return (
       <AppBar 
         position="fixed" 
+        elevation={0}
         sx={{ 
           backgroundColor: 'rgba(255, 255, 255, 0.95)',
-          backdropFilter: 'blur(8px)',
-          boxShadow: '0 2px 10px rgba(0, 0, 0, 0.1)',
-          color: 'primary.main',
+          backdropFilter: 'blur(20px)',
+          borderBottom: `1px solid ${theme.palette.divider}`,
+          color: 'text.primary',
           zIndex: theme.zIndex.drawer + 1
         }}
       >
-        <Toolbar>
+        <Toolbar sx={{ px: { xs: 2, md: 4 } }}>
           <Typography 
             variant="h5" 
             component="div" 
             sx={{ 
               flexGrow: 1,
               cursor: 'pointer',
-              fontWeight: 'bold',
-              background: '-webkit-linear-gradient(45deg, #FE3C72 30%, #FF6036 90%)',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent'
+              fontWeight: 800,
+              fontSize: { xs: '1.25rem', md: '1.5rem' },
+              transition: 'transform 0.2s ease',
+              '&:hover': {
+                transform: 'scale(1.02)'
+              }
             }}
+            className="gradient-text"
             onClick={() => navigate('/')}
           >
             Campus Cupid
           </Typography>
           
-          <Box sx={{ display: { xs: 'none', sm: 'flex' } }}>
-            {location.pathname !== '/login' && (
-              <Button 
-                color="primary" 
-                onClick={() => navigate('/login')}
-                sx={{ 
-                  ml: 2,
-                  borderRadius: '20px',
-                  textTransform: 'none',
-                  fontWeight: 600
-                }}
-              >
-                Login
-              </Button>
-            )}
-            
-            {location.pathname !== '/signup' && (
-              <Button 
-                variant="contained" 
-                color="primary" 
-                onClick={() => navigate('/signup')}
-                sx={{ 
-                  ml: 2,
-                  borderRadius: '20px',
-                  textTransform: 'none',
-                  fontWeight: 600,
-                  background: 'linear-gradient(45deg, #FE3C72 30%, #FF6036 90%)',
-                  boxShadow: '0 4px 10px rgba(254, 60, 114, 0.3)',
-                  '&:hover': {
-                    background: 'linear-gradient(45deg, #E31C5F 30%, #E31C5F 90%)',
-                    boxShadow: '0 6px 15px rgba(254, 60, 114, 0.4)',
-                    transform: 'translateY(-2px)'
-                  },
-                  transition: 'all 0.3s ease'
-                }}
-              >
-                Sign Up
-              </Button>
-            )}
-          </Box>
+          {!isMobile && (
+            <Box sx={{ display: 'flex', gap: 2 }}>
+              {location.pathname !== '/login' && (
+                <Button 
+                  variant="text"
+                  onClick={() => navigate('/login')}
+                  sx={{ 
+                    color: 'text.primary',
+                    fontWeight: 600,
+                    textTransform: 'none',
+                    borderRadius: theme.customTokens.borderRadius.medium,
+                    px: 3,
+                    '&:hover': {
+                      backgroundColor: 'rgba(233, 30, 99, 0.04)',
+                    }
+                  }}
+                >
+                  Sign In
+                </Button>
+              )}
+              
+              {location.pathname !== '/signup' && (
+                <Button 
+                  variant="contained" 
+                  onClick={() => navigate('/signup')}
+                  sx={{ 
+                    background: theme.customTokens.gradients.primary,
+                    color: 'white',
+                    fontWeight: 700,
+                    textTransform: 'none',
+                    borderRadius: theme.customTokens.borderRadius.medium,
+                    px: 3,
+                    '&:hover': {
+                      transform: 'translateY(-1px)',
+                      boxShadow: '0 6px 20px rgba(233, 30, 99, 0.3)',
+                    }
+                  }}
+                >
+                  Get Started
+                </Button>
+              )}
+            </Box>
+          )}
           
           {isMobile && (
             <IconButton 
@@ -144,51 +160,62 @@ const NavBar = ({ user }) => {
           )}
         </Toolbar>
         
+        {/* Mobile Drawer for Public Pages */}
         {isMobile && (
           <Drawer
             anchor="right"
             open={drawerOpen}
             onClose={handleDrawerToggle}
             sx={{
-              '& .MuiDrawer-paper': { width: 240 },
+              '& .MuiDrawer-paper': { 
+                width: 280,
+                borderRadius: `${theme.customTokens.borderRadius.large}px 0 0 ${theme.customTokens.borderRadius.large}px`,
+              },
             }}
           >
-            <Box sx={{ p: 2 }}>
+            <Box sx={{ p: 3 }}>
               <Typography 
                 variant="h6" 
-                sx={{ 
-                  mb: 2,
-                  fontWeight: 'bold',
-                  background: '-webkit-linear-gradient(45deg, #FE3C72 30%, #FF6036 90%)',
-                  WebkitBackgroundClip: 'text',
-                  WebkitTextFillColor: 'transparent'
-                }}
+                className="gradient-text"
+                sx={{ fontWeight: 800 }}
               >
-                Menu
+                Campus Cupid
               </Typography>
             </Box>
             <Divider />
-            <List>
-              <ListItem button onClick={() => { navigate('/'); handleDrawerToggle(); }}>
+            <List sx={{ px: 2 }}>
+              <ListItem 
+                button 
+                onClick={() => { navigate('/'); handleDrawerToggle(); }}
+                sx={{ borderRadius: theme.customTokens.borderRadius.medium, mb: 1 }}
+              >
                 <ListItemIcon>
                   <HomeIcon color="primary" />
                 </ListItemIcon>
                 <ListItemText primary="Home" />
               </ListItem>
               {location.pathname !== '/login' && (
-                <ListItem button onClick={() => { navigate('/login'); handleDrawerToggle(); }}>
+                <ListItem 
+                  button 
+                  onClick={() => { navigate('/login'); handleDrawerToggle(); }}
+                  sx={{ borderRadius: theme.customTokens.borderRadius.medium, mb: 1 }}
+                >
                   <ListItemIcon>
                     <PersonIcon color="primary" />
                   </ListItemIcon>
-                  <ListItemText primary="Login" />
+                  <ListItemText primary="Sign In" />
                 </ListItem>
               )}
               {location.pathname !== '/signup' && (
-                <ListItem button onClick={() => { navigate('/signup'); handleDrawerToggle(); }}>
+                <ListItem 
+                  button 
+                  onClick={() => { navigate('/signup'); handleDrawerToggle(); }}
+                  sx={{ borderRadius: theme.customTokens.borderRadius.medium }}
+                >
                   <ListItemIcon>
                     <PersonIcon color="primary" />
                   </ListItemIcon>
-                  <ListItemText primary="Sign Up" />
+                  <ListItemText primary="Get Started" />
                 </ListItem>
               )}
             </List>
@@ -198,116 +225,125 @@ const NavBar = ({ user }) => {
     );
   }
   
-  // For authenticated users in private pages
+  // Authenticated users navbar
   return (
     <AppBar 
       position="fixed" 
+      elevation={0}
       sx={{ 
         backgroundColor: 'rgba(255, 255, 255, 0.95)',
-        backdropFilter: 'blur(8px)',
-        boxShadow: '0 2px 10px rgba(0, 0, 0, 0.1)',
-        color: 'primary.main',
+        backdropFilter: 'blur(20px)',
+        borderBottom: `1px solid ${theme.palette.divider}`,
+        color: 'text.primary',
         zIndex: theme.zIndex.drawer + 1
       }}
     >
-      <Toolbar>
+      <Toolbar sx={{ px: { xs: 2, md: 4 } }}>
         <Typography 
           variant="h5" 
           component="div" 
           sx={{ 
-            flexGrow: 1,
             cursor: 'pointer',
-            fontWeight: 'bold',
-            background: '-webkit-linear-gradient(45deg, #FE3C72 30%, #FF6036 90%)',
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent',
-            transition: 'transform 0.3s ease',
+            fontWeight: 800,
+            fontSize: { xs: '1.25rem', md: '1.5rem' },
+            transition: 'transform 0.2s ease',
+            mr: 4,
             '&:hover': {
-              transform: 'scale(1.05)'
+              transform: 'scale(1.02)'
             }
           }}
+          className="gradient-text"
           onClick={() => navigate('/dashboard')}
         >
           Campus Cupid
         </Typography>
         
+        {/* Desktop Navigation */}
         {!isMobile && (
-          <Box sx={{ display: 'flex', alignItems: 'center' }}>
-            <Button 
-              color="inherit" 
-              startIcon={<PersonIcon />}
-              onClick={() => navigate('/dashboard')}
-              sx={{ 
-                mr: 1,
-                color: location.pathname === '/dashboard' ? 'primary.main' : 'text.secondary',
-                fontWeight: location.pathname === '/dashboard' ? 'bold' : 'normal',
-                textTransform: 'none'
-              }}
-            >
-              Profile
-            </Button>
-            <Button 
-              color="inherit" 
-              startIcon={<FavoriteIcon />}
-              onClick={() => navigate('/matcher')}
-              sx={{ 
-                mr: 1,
-                color: location.pathname === '/matcher' ? 'primary.main' : 'text.secondary',
-                fontWeight: location.pathname === '/matcher' ? 'bold' : 'normal',
-                textTransform: 'none'
-              }}
-            >
-              Find Matches
-            </Button>
-            <Button 
-              color="inherit" 
-              startIcon={<ChatIcon />}
-              onClick={() => navigate('/matches')}
-              sx={{ 
-                mr: 2,
-                color: location.pathname === '/matches' ? 'primary.main' : 'text.secondary',
-                fontWeight: location.pathname === '/matches' ? 'bold' : 'normal',
-                textTransform: 'none'
-              }}
-            >
-              Matches
-            </Button>
+          <Box sx={{ display: 'flex', alignItems: 'center', flexGrow: 1, gap: 1 }}>
+            {navigationItems.map((item) => (
+              <Button
+                key={item.path}
+                onClick={() => navigate(item.path)}
+                startIcon={
+                  item.badge ? (
+                    <Badge badgeContent={item.badge} color="error" variant="dot">
+                      {item.icon}
+                    </Badge>
+                  ) : (
+                    item.icon
+                  )
+                }
+                sx={{
+                  color: item.active ? 'primary.main' : 'text.secondary',
+                  fontWeight: item.active ? 700 : 600,
+                  textTransform: 'none',
+                  borderRadius: theme.customTokens.borderRadius.medium,
+                  px: 2,
+                  py: 1,
+                  backgroundColor: item.active ? 'rgba(233, 30, 99, 0.08)' : 'transparent',
+                  '&:hover': {
+                    backgroundColor: item.active ? 'rgba(233, 30, 99, 0.12)' : 'rgba(233, 30, 99, 0.04)',
+                    color: 'primary.main',
+                  }
+                }}
+              >
+                {item.label}
+              </Button>
+            ))}
           </Box>
         )}
-        
-        {/* User profile icon/avatar that opens menu */}
-        <IconButton
-          size="large"
-          edge="end"
-          aria-haspopup="true"
-          onClick={handleProfileMenuOpen}
-          color="inherit"
-          sx={{ ml: 1 }}
-        >
-          <Avatar 
-            alt={user?.firstName || "User"} 
-            src={user?.profilePictureURL}
-            sx={{ 
-              width: 35, 
-              height: 35,
-              border: '2px solid #FE3C72'
-            }}
-          />
-        </IconButton>
-        
-        {/* Mobile menu toggle */}
-        {isMobile && (
-          <IconButton 
-            color="primary" 
-            edge="end" 
-            onClick={handleDrawerToggle}
+
+        {/* Right side actions */}
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, ml: 'auto' }}>
+          {/* Notifications */}
+          {!isMobile && (
+            <IconButton
+              size="large"
+              sx={{ color: 'text.secondary' }}
+            >
+              <Badge badgeContent={2} color="error" variant="dot">
+                <NotificationsIcon />
+              </Badge>
+            </IconButton>
+          )}
+          
+          {/* User Profile */}
+          <IconButton
+            size="large"
+            edge="end"
+            aria-haspopup="true"
+            onClick={handleProfileMenuOpen}
             sx={{ ml: 1 }}
           >
-            <MenuIcon />
+            <Avatar 
+              alt={user?.firstName || "User"} 
+              src={user?.profilePictureURL}
+              sx={{ 
+                width: 40, 
+                height: 40,
+                border: `2px solid ${theme.palette.primary.main}`,
+                '&:hover': {
+                  transform: 'scale(1.05)',
+                }
+              }}
+            />
           </IconButton>
-        )}
+          
+          {/* Mobile menu toggle */}
+          {isMobile && (
+            <IconButton 
+              color="primary" 
+              edge="end" 
+              onClick={handleDrawerToggle}
+              sx={{ ml: 1 }}
+            >
+              <MenuIcon />
+            </IconButton>
+          )}
+        </Box>
         
-        {/* User profile menu */}
+        {/* User Profile Menu */}
         <Menu
           anchorEl={anchorEl}
           anchorOrigin={{
@@ -324,30 +360,51 @@ const NavBar = ({ user }) => {
           sx={{
             mt: 1,
             '& .MuiPaper-root': {
-              borderRadius: 2,
-              minWidth: 180,
-              boxShadow: theme.shadows[3] // Changed elevation to 3
+              borderRadius: theme.customTokens.borderRadius.large,
+              minWidth: 200,
+              boxShadow: '0 8px 32px rgba(0, 0, 0, 0.12)',
+              border: `1px solid ${theme.palette.divider}`,
+              py: 1,
             }
           }}
         >
-          <MenuItem onClick={() => { navigate('/dashboard'); handleMenuClose(); }}>
+          {/* User Info */}
+          <Box sx={{ px: 3, py: 2, borderBottom: `1px solid ${theme.palette.divider}` }}>
+            <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+              {user?.firstName || 'User'}
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              {user?.email}
+            </Typography>
+          </Box>
+          
+          <MenuItem 
+            onClick={() => { navigate('/dashboard'); handleMenuClose(); }}
+            sx={{ py: 1.5, px: 3 }}
+          >
             <ListItemIcon>
-              <PersonIcon fontSize="small" sx={{ color: theme.palette.primary.main }} />
+              <PersonIcon fontSize="small" color="primary" />
             </ListItemIcon>
             <ListItemText primary="My Profile" />
           </MenuItem>
-          <MenuItem onClick={() => { navigate('/settings'); handleMenuClose(); }}>
+          <MenuItem 
+            onClick={() => { navigate('/settings'); handleMenuClose(); }}
+            sx={{ py: 1.5, px: 3 }}
+          >
             <ListItemIcon>
-              <SettingsIcon fontSize="small" sx={{ color: theme.palette.primary.main }} />
+              <SettingsIcon fontSize="small" color="primary" />
             </ListItemIcon>
             <ListItemText primary="Settings" />
           </MenuItem>
-          <Divider />
-          <MenuItem onClick={handleLogout}>
+          <Divider sx={{ my: 1 }} />
+          <MenuItem 
+            onClick={handleLogout}
+            sx={{ py: 1.5, px: 3, color: 'error.main' }}
+          >
             <ListItemIcon>
-              <LogoutIcon fontSize="small" sx={{ color: theme.palette.primary.main }} />
+              <LogoutIcon fontSize="small" color="error" />
             </ListItemIcon>
-            <ListItemText primary="Logout" />
+            <ListItemText primary="Sign Out" />
           </MenuItem>
         </Menu>
       </Toolbar>
@@ -359,55 +416,89 @@ const NavBar = ({ user }) => {
           open={drawerOpen}
           onClose={handleDrawerToggle}
           sx={{
-            '& .MuiDrawer-paper': { width: 240 },
+            '& .MuiDrawer-paper': { 
+              width: 280,
+              borderRadius: `${theme.customTokens.borderRadius.large}px 0 0 ${theme.customTokens.borderRadius.large}px`,
+            },
           }}
         >
-          <Box sx={{ p: 2 }}>
-            <Typography 
-              variant="h6" 
-              sx={{ 
-                mb: 2,
-                fontWeight: 'bold',
-                background: '-webkit-linear-gradient(45deg, #FE3C72 30%, #FF6036 90%)',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent'
-              }}
-            >
-              Menu
-            </Typography>
+          <Box sx={{ p: 3 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+              <Avatar 
+                alt={user?.firstName || "User"} 
+                src={user?.profilePictureURL}
+                sx={{ 
+                  width: 48, 
+                  height: 48,
+                  border: `2px solid ${theme.palette.primary.main}`,
+                }}
+              />
+              <Box>
+                <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+                  {user?.firstName || 'User'}
+                </Typography>
+                <Chip 
+                  label="Online" 
+                  size="small" 
+                  color="success" 
+                  sx={{ fontSize: '0.75rem' }}
+                />
+              </Box>
+            </Box>
           </Box>
           <Divider />
-          <List>
-            <ListItem button onClick={() => { navigate('/dashboard'); handleDrawerToggle(); }}>
+          <List sx={{ px: 2 }}>
+            {navigationItems.map((item) => (
+              <ListItem 
+                key={item.path}
+                button 
+                onClick={() => { navigate(item.path); handleDrawerToggle(); }}
+                sx={{ 
+                  borderRadius: theme.customTokens.borderRadius.medium, 
+                  mb: 1,
+                  backgroundColor: item.active ? 'rgba(233, 30, 99, 0.08)' : 'transparent',
+                }}
+              >
+                <ListItemIcon>
+                  {item.badge ? (
+                    <Badge badgeContent={item.badge} color="error" variant="dot">
+                      {React.cloneElement(item.icon, { color: item.active ? 'primary' : 'inherit' })}
+                    </Badge>
+                  ) : (
+                    React.cloneElement(item.icon, { color: item.active ? 'primary' : 'inherit' })
+                  )}
+                </ListItemIcon>
+                <ListItemText 
+                  primary={item.label} 
+                  sx={{ 
+                    '& .MuiTypography-root': { 
+                      fontWeight: item.active ? 600 : 400,
+                      color: item.active ? 'primary.main' : 'inherit'
+                    } 
+                  }} 
+                />
+              </ListItem>
+            ))}
+            <Divider sx={{ my: 2 }} />
+            <ListItem 
+              button 
+              onClick={() => { navigate('/settings'); handleDrawerToggle(); }}
+              sx={{ borderRadius: theme.customTokens.borderRadius.medium, mb: 1 }}
+            >
               <ListItemIcon>
-                <PersonIcon color="primary" />
-              </ListItemIcon>
-              <ListItemText primary="My Profile" />
-            </ListItem>
-            <ListItem button onClick={() => { navigate('/matcher'); handleDrawerToggle(); }}>
-              <ListItemIcon>
-                <FavoriteIcon color="primary" />
-              </ListItemIcon>
-              <ListItemText primary="Find Matches" />
-            </ListItem>
-            <ListItem button onClick={() => { navigate('/matches'); handleDrawerToggle(); }}>
-              <ListItemIcon>
-                <ChatIcon color="primary" />
-              </ListItemIcon>
-              <ListItemText primary="Matches" />
-            </ListItem>
-            <Divider />
-            <ListItem button onClick={() => { navigate('/settings'); handleDrawerToggle(); }}>
-              <ListItemIcon>
-                <SettingsIcon color="primary" />
+                <SettingsIcon />
               </ListItemIcon>
               <ListItemText primary="Settings" />
             </ListItem>
-            <ListItem button onClick={handleLogout}>
+            <ListItem 
+              button 
+              onClick={handleLogout}
+              sx={{ borderRadius: theme.customTokens.borderRadius.medium, color: 'error.main' }}
+            >
               <ListItemIcon>
-                <LogoutIcon color="primary" />
+                <LogoutIcon color="error" />
               </ListItemIcon>
-              <ListItemText primary="Logout" />
+              <ListItemText primary="Sign Out" />
             </ListItem>
           </List>
         </Drawer>
