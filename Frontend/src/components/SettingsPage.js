@@ -14,8 +14,24 @@ import {
   FormControlLabel,
   CircularProgress,
   Snackbar,
-  Alert
+  Alert,
+  Card,
+  CardContent,
+  Stack,
+  useTheme,
+  useMediaQuery,
+  IconButton,
+  Chip
 } from '@mui/material';
+import {
+  NotificationsRounded as NotificationsIcon,
+  SecurityRounded as SecurityIcon,
+  TuneRounded as PreferencesIcon,
+  AccountCircleRounded as AccountIcon,
+  LogoutRounded as LogoutIcon,
+  DeleteRounded as DeleteIcon,
+  SaveRounded as SaveIcon
+} from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import NavBar from './common/NavBar';
@@ -24,9 +40,15 @@ const API_URL = 'http://localhost:8080';
 
 function SettingsPage() {
   const navigate = useNavigate();
-  const [user, setUser] = useState(null);
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const [user, setUser] = useState(JSON.parse(localStorage.getItem('user')));
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [openSnackbar, setOpenSnackbar] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState('');
+  const [snackbarSeverity, setSnackbarSeverity] = useState('success');
+  
   const [settings, setSettings] = useState({
     notifications: {
       newMatches: true,
@@ -51,7 +73,6 @@ function SettingsPage() {
   });
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
-  const [openSnackbar, setOpenSnackbar] = useState(false);
 
   useEffect(() => {
     const fetchUserProfile = async () => {
@@ -226,72 +247,147 @@ function SettingsPage() {
   return (
     <>
       <NavBar user={user} />
-      <Box sx={{ pt: 10, pb: 4, backgroundColor: 'background.default', minHeight: '100vh' }}>
+      <Box sx={{ 
+        pt: 10, 
+        pb: 4, 
+        backgroundColor: 'background.default', 
+        minHeight: '100vh' 
+      }}>
         <Container maxWidth="md">
-          <Typography 
-            variant="h4" 
-            sx={{ 
-              mb: 4, 
-              fontWeight: 'bold',
-              background: '-webkit-linear-gradient(45deg, #FE3C72 30%, #FF6036 90%)',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-            }}
-          >
-            Settings
-          </Typography>
+          {/* Header */}
+          <Box sx={{ textAlign: 'center', mb: 4 }}>
+            <Typography 
+              variant="h3" 
+              sx={{ 
+                fontWeight: 800,
+                mb: 1,
+                fontSize: { xs: '2rem', md: '2.75rem' }
+              }}
+              className="gradient-text"
+            >
+              Settings
+            </Typography>
+            <Typography 
+              variant="h6" 
+              sx={{ 
+                color: 'text.secondary',
+                fontWeight: 400
+              }}
+            >
+              Customize your Campus Cupid experience
+            </Typography>
+          </Box>
           
           <Grid container spacing={3}>
             {/* Account Settings */}
             <Grid item xs={12}>
-              <Paper elevation={2} sx={{ p: 3, mb: 3, borderRadius: 3 }}>
-                <Typography variant="h5" sx={{ mb: 2, fontWeight: 600 }}>Account</Typography>
-                <Divider sx={{ mb: 3 }} />
-                <Grid container spacing={2}>
-                  <Grid item xs={12} sm={6}>
-                    <TextField
-                      fullWidth
-                      label="Email"
-                      value={settings.account.email}
-                      onChange={handleAccountChange('email')}
-                      variant="outlined"
-                      margin="normal"
-                    />
+              <Card 
+                elevation={0}
+                sx={{ 
+                  borderRadius: theme.customTokens.borderRadius.xl,
+                  border: `1px solid ${theme.palette.divider}`,
+                }}
+              >
+                <CardContent sx={{ p: 4 }}>
+                  <Stack direction="row" alignItems="center" spacing={2} sx={{ mb: 3 }}>
+                    <AccountIcon sx={{ fontSize: 28, color: 'primary.main' }} />
+                    <Typography variant="h5" sx={{ fontWeight: 700 }}>
+                      Account Settings
+                    </Typography>
+                  </Stack>
+                  <Divider sx={{ mb: 3 }} />
+                  
+                  <Grid container spacing={3}>
+                    <Grid item xs={12} sm={6}>
+                      <TextField
+                        fullWidth
+                        label="Email Address"
+                        value={settings.account.email}
+                        onChange={handleAccountChange('email')}
+                        variant="outlined"
+                        sx={{
+                          '& .MuiOutlinedInput-root': {
+                            backgroundColor: 'rgba(255, 255, 255, 0.8)',
+                          }
+                        }}
+                      />
+                    </Grid>
+                    <Grid item xs={12} sm={6}>
+                      <TextField
+                        fullWidth
+                        label="Phone Number"
+                        value={settings.account.phone}
+                        onChange={handleAccountChange('phone')}
+                        variant="outlined"
+                        sx={{
+                          '& .MuiOutlinedInput-root': {
+                            backgroundColor: 'rgba(255, 255, 255, 0.8)',
+                          }
+                        }}
+                      />
+                    </Grid>
+                    
+                    <Grid item xs={12}>
+                      <Stack 
+                        direction={{ xs: 'column', sm: 'row' }} 
+                        spacing={2} 
+                        sx={{ mt: 2 }}
+                      >
+                        <Button
+                          variant="outlined"
+                          sx={{
+                            borderWidth: 2,
+                            fontWeight: 600,
+                            textTransform: 'none',
+                            '&:hover': {
+                              borderWidth: 2,
+                              transform: 'translateY(-2px)',
+                            }
+                          }}
+                        >
+                          Change Password
+                        </Button>
+                        <Button
+                          variant="outlined"
+                          color="error"
+                          startIcon={<DeleteIcon />}
+                          sx={{
+                            borderWidth: 2,
+                            fontWeight: 600,
+                            textTransform: 'none',
+                            '&:hover': {
+                              borderWidth: 2,
+                              transform: 'translateY(-2px)',
+                            }
+                          }}
+                        >
+                          Deactivate Account
+                        </Button>
+                      </Stack>
+                    </Grid>
                   </Grid>
-                  <Grid item xs={12} sm={6}>
-                    <TextField
-                      fullWidth
-                      label="Phone"
-                      value={settings.account.phone}
-                      onChange={handleAccountChange('phone')}
-                      variant="outlined"
-                      margin="normal"
-                    />
-                  </Grid>
-                  <Grid item xs={12} sx={{ mt: 2 }}>
-                    <Button
-                      variant="outlined"
-                      color="primary"
-                      sx={{ mr: 2 }}
-                    >
-                      Change Password
-                    </Button>
-                    <Button
-                      variant="outlined"
-                      color="error"
-                    >
-                      Deactivate Account
-                    </Button>
-                  </Grid>
-                </Grid>
-              </Paper>
+                </CardContent>
+              </Card>
             </Grid>
 
             {/* Preferences Settings */}
             <Grid item xs={12} md={6}>
-              <Paper elevation={2} sx={{ p: 3, mb: 3, height: '100%', borderRadius: 3 }}>
-                <Typography variant="h5" sx={{ mb: 2, fontWeight: 600 }}>Dating Preferences</Typography>
-                <Divider sx={{ mb: 3 }} />
+              <Card 
+                elevation={0}
+                sx={{ 
+                  borderRadius: theme.customTokens.borderRadius.xl,
+                  border: `1px solid ${theme.palette.divider}`,
+                  height: '100%'
+                }}
+              >
+                <CardContent sx={{ p: 4 }}>
+                  <Stack direction="row" alignItems="center" spacing={2} sx={{ mb: 3 }}>
+                    <PreferencesIcon sx={{ fontSize: 28, color: 'primary.main' }} />
+                    <Typography variant="h5" sx={{ fontWeight: 700 }}>
+                      Dating Preferences
+                    </Typography>
+                  </Stack>
+                  <Divider sx={{ mb: 3 }} />
                 
                 <Box sx={{ mb: 4 }}>
                   <Typography variant="subtitle1" gutterBottom>Show me</Typography>
@@ -349,14 +445,27 @@ function SettingsPage() {
                     }}
                   />
                 </Box>
-              </Paper>
+                </CardContent>
+              </Card>
             </Grid>
 
             {/* Privacy & Notifications Settings */}
             <Grid item xs={12} md={6}>
-              <Paper elevation={2} sx={{ p: 3, mb: 3, borderRadius: 3 }}>
-                <Typography variant="h5" sx={{ mb: 2, fontWeight: 600 }}>Notifications</Typography>
-                <Divider sx={{ mb: 3 }} />
+              <Card 
+                elevation={0}
+                sx={{ 
+                  borderRadius: theme.customTokens.borderRadius.xl,
+                  border: `1px solid ${theme.palette.divider}`,
+                }}
+              >
+                <CardContent sx={{ p: 4 }}>
+                  <Stack direction="row" alignItems="center" spacing={2} sx={{ mb: 3 }}>
+                    <NotificationsIcon sx={{ fontSize: 28, color: 'primary.main' }} />
+                    <Typography variant="h5" sx={{ fontWeight: 700 }}>
+                      Notifications
+                    </Typography>
+                  </Stack>
+                  <Divider sx={{ mb: 3 }} />
                 
                 <FormControlLabel
                   control={
@@ -388,11 +497,17 @@ function SettingsPage() {
                   }
                   label="App Updates"
                 />
-              </Paper>
+                </CardContent>
 
-              <Paper elevation={2} sx={{ p: 3, borderRadius: 3 }}>
-                <Typography variant="h5" sx={{ mb: 2, fontWeight: 600 }}>Privacy</Typography>
-                <Divider sx={{ mb: 3 }} />
+              <Divider />
+
+              <CardContent sx={{ p: 4 }}>
+                <Stack direction="row" alignItems="center" spacing={2} sx={{ mb: 3 }}>
+                  <SecurityIcon sx={{ fontSize: 28, color: 'primary.main' }} />
+                  <Typography variant="h5" sx={{ fontWeight: 700 }}>
+                    Privacy
+                  </Typography>
+                </Stack>
                 
                 <FormControlLabel
                   control={
@@ -424,26 +539,39 @@ function SettingsPage() {
                   }
                   label="Show Distance"
                 />
-              </Paper>
+                </CardContent>
+              </Card>
             </Grid>
             
             {/* Save Button */}
             <Grid item xs={12}>
-              <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
+              <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
                 <Button
                   variant="contained"
-                  color="primary"
                   onClick={handleSaveSettings}
                   disabled={saving}
+                  startIcon={saving ? <CircularProgress size={20} color="inherit" /> : <SaveIcon />}
                   sx={{
-                    background: 'linear-gradient(45deg, #FE3C72 30%, #FF6036 90%)',
-                    textTransform: 'none',
+                    py: 2,
                     px: 4,
-                    py: 1.5,
-                    fontSize: '1rem'
+                    background: theme.customTokens.gradients.primary,
+                    fontSize: '1rem',
+                    fontWeight: 700,
+                    textTransform: 'none',
+                    borderRadius: theme.customTokens.borderRadius.medium,
+                    minWidth: 200,
+                    '&:hover': {
+                      transform: 'translateY(-2px)',
+                      boxShadow: '0 8px 25px rgba(233, 30, 99, 0.3)',
+                    },
+                    '&:disabled': {
+                      background: 'rgba(0, 0, 0, 0.12)',
+                      color: 'rgba(0, 0, 0, 0.26)',
+                      transform: 'none',
+                    }
                   }}
                 >
-                  {saving ? <CircularProgress size={24} color="inherit" /> : 'Save Changes'}
+                  {saving ? 'Saving Changes...' : 'Save All Changes'}
                 </Button>
               </Box>
             </Grid>
