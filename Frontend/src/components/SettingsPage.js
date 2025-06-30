@@ -21,7 +21,7 @@ import axios from 'axios';
 import NavBar from './common/NavBar';
 import ThemeProvider from './common/ThemeProvider';
 // API URL
-const API_URL = 'https://campuscupid.onrender.com';
+const API_URL = 'localhost:8080';
 
 function SettingsPage() {
   const navigate = useNavigate();

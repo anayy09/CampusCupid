@@ -49,7 +49,7 @@ const StyledTextField = styled(TextField)({
 });
 
 // Backend API base URL - use environment variable
-const API_URL = 'https://campuscupid.onrender.com';
+const API_URL = 'localhost:8080';
 function LoginPage() {
   const navigate = useNavigate();
   const [email, setEmail] = useState('');

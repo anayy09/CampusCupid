@@ -95,7 +95,7 @@ const suggestedInterests = [
   'Gardening'
 ];
 
-const API_URL = 'https://campuscupid.onrender.com';
+const API_URL = 'localhost:8080';
 console.log('API URL:', API_URL); // Added for debugging
 
 function SignUpPage() {

@@ -26,7 +26,7 @@ import {
 } from '@mui/material';
 import { ArrowBack as ArrowBackIcon, PhotoCamera as PhotoCameraIcon } from '@mui/icons-material';
 
-const API_URL = 'https://campuscupid.onrender.com';
+const API_URL = 'localhost:8080';
 const DEFAULT_PROFILE_IMAGE = '/default-profile.jpg';
 
 function EditProfilePage() {
