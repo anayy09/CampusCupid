@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Typography,
   Box,
@@ -61,26 +61,7 @@ function MatchesPage() {
   const [showMobileConversations, setShowMobileConversations] = useState(true);
   const [tabValue, setTabValue] = useState(0);
 
-  // Fetch all data on component mount
-  useEffect(() => {
-    fetchConversations();
-    fetchAllMatches();
-  }, []);
-
-  // Fetch messages when a match is selected
-  useEffect(() => {
-    if (selectedMatch) {
-      fetchMessages(selectedMatch.id);
-      setShowMobileConversations(false); // On mobile, show the messages when a conversation is selected
-    }
-  }, [selectedMatch]);
-
-  // Scroll to bottom of messages when messages change
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
-
-  const fetchConversations = async () => {
+  const fetchConversations = useCallback(async () => {
     try {
       const token = localStorage.getItem('token');
       if (!token) {
@@ -114,10 +95,10 @@ function MatchesPage() {
         navigate('/login');
       }
     }
-  };
+  }, [navigate, selectedMatch]);
 
   // New function to fetch all matches including those without messages
-  const fetchAllMatches = async () => {
+  const fetchAllMatches = useCallback(async () => {
     try {
       setLoadingMatches(true);
       const token = localStorage.getItem('token');
@@ -148,9 +129,9 @@ function MatchesPage() {
       setOpenSnackbar(true);
       setLoadingMatches(false);
     }
-  };
+  }, [navigate, conversations]);
 
-  const fetchMessages = async (matchId) => {
+  const fetchMessages = useCallback(async (matchId) => {
     try {
       setLoadingMessages(true);
       const token = localStorage.getItem('token');
@@ -185,7 +166,26 @@ function MatchesPage() {
         navigate('/login');
       }
     }
-  };
+  }, [navigate, fetchConversations]);
+
+  // Fetch all data on component mount
+  useEffect(() => {
+    fetchConversations();
+    fetchAllMatches();
+  }, [fetchConversations, fetchAllMatches]);
+
+  // Fetch messages when a match is selected
+  useEffect(() => {
+    if (selectedMatch) {
+      fetchMessages(selectedMatch.id);
+      setShowMobileConversations(false); // On mobile, show the messages when a conversation is selected
+    }
+  }, [selectedMatch, fetchMessages]);
+
+  // Scroll to bottom of messages when messages change
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
 
   const sendMessage = async () => {
     if (!newMessage.trim() || !selectedMatch) return;

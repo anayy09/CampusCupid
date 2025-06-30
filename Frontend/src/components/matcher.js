@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { 
@@ -36,6 +36,66 @@ function MatcherPage() {
   const cardRef = useRef(null);
   const [imageLoadError, setImageLoadError] = useState(false);
   const [matchAlert, setMatchAlert] = useState({ open: false, message: '' });
+
+  const nextProfile = useCallback(() => {
+    const currentIndex = profiles.findIndex(profile => profile.id === currentProfile.id);
+    if (currentIndex < profiles.length - 1) {
+      setCurrentProfile(profiles[currentIndex + 1]);
+    } else {
+      setCurrentProfile(null);
+    }
+  }, [profiles, currentProfile]);
+
+  const handleLike = useCallback(async () => {
+    if (!currentProfile) return;
+    setSwipeDirection('right');
+    
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.post(`${API_URL}/like/${currentProfile.id}`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      // Check if this like created a match
+      if (response.data && response.data.matched) {
+        setMatchAlert({ 
+          open: true, 
+          message: `You matched with ${currentProfile.firstName}!` 
+        });
+      }
+      
+    } catch (error) {
+      console.error(`Error liking user ${currentProfile.id}:`, error.response?.data?.error || error.message);
+    }
+    
+    setTimeout(() => {
+      nextProfile();
+      setSwipeDirection(null);
+      setOffsetX(0);
+      setImageLoadError(false);
+    }, 300);
+  }, [currentProfile, nextProfile]);
+
+  const handleDislike = useCallback(async () => {
+    if (!currentProfile) return;
+    setSwipeDirection('left');
+    
+    try {
+      const token = localStorage.getItem('token');
+      await axios.post(`${API_URL}/dislike/${currentProfile.id}`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+    } catch (error) {
+      console.error(`Error disliking user ${currentProfile.id}:`, error.response?.data?.error || error.message);
+    }
+    
+    setTimeout(() => {
+      nextProfile();
+      setSwipeDirection(null);
+      setOffsetX(0);
+      setImageLoadError(false);
+    }, 300);
+  }, [currentProfile, nextProfile]);
 
   // Fetch profiles from the backend API
   useEffect(() => {
@@ -95,67 +155,7 @@ function MatcherPage() {
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [currentProfile]);
-
-  const handleLike = async () => {
-    if (!currentProfile) return;
-    setSwipeDirection('right');
-    
-    try {
-      const token = localStorage.getItem('token');
-      const response = await axios.post(`${API_URL}/like/${currentProfile.id}`, {}, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      
-      // Check if this like created a match
-      if (response.data && response.data.matched) {
-        setMatchAlert({ 
-          open: true, 
-          message: `You matched with ${currentProfile.firstName}!` 
-        });
-      }
-      
-    } catch (error) {
-      console.error(`Error liking user ${currentProfile.id}:`, error.response?.data?.error || error.message);
-    }
-    
-    setTimeout(() => {
-      nextProfile();
-      setSwipeDirection(null);
-      setOffsetX(0);
-      setImageLoadError(false);
-    }, 300);
-  };
-
-  const handleDislike = async () => {
-    if (!currentProfile) return;
-    setSwipeDirection('left');
-    
-    try {
-      const token = localStorage.getItem('token');
-      await axios.post(`${API_URL}/dislike/${currentProfile.id}`, {}, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-    } catch (error) {
-      console.error(`Error disliking user ${currentProfile.id}:`, error.response?.data?.error || error.message);
-    }
-    
-    setTimeout(() => {
-      nextProfile();
-      setSwipeDirection(null);
-      setOffsetX(0);
-      setImageLoadError(false);
-    }, 300);
-  };
-
-  const nextProfile = () => {
-    const currentIndex = profiles.findIndex(profile => profile.id === currentProfile.id);
-    if (currentIndex < profiles.length - 1) {
-      setCurrentProfile(profiles[currentIndex + 1]);
-    } else {
-      setCurrentProfile(null);
-    }
-  };
+  }, [handleDislike, handleLike]);
 
   const handleBackToDashboard = () => {
     navigate('/dashboard');
