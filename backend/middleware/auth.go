@@ -1,6 +1,8 @@
 package middleware
 
 import (
+	"datingapp/database"
+	"datingapp/models"
 	"fmt"
 	"os"
 	"strconv"
@@ -66,7 +68,16 @@ func AuthMiddleware() gin.HandlerFunc {
 			return
 		}
 
+		// Fetch user from database to get current admin status
+		var user models.User
+		if err := database.DB.Select("is_admin").First(&user, uint(userID)).Error; err != nil {
+			c.JSON(401, gin.H{"error": "User not found"})
+			c.Abort()
+			return
+		}
+
 		c.Set("userID", uint(userID))
+		c.Set("isAdmin", user.IsAdmin)
 		c.Next()
 	}
 }
