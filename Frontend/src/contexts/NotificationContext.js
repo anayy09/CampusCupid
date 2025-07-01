@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 
 const API_URL = 'http://localhost:8080';
@@ -41,7 +41,7 @@ export const NotificationProvider = ({ children }) => {
     return () => clearInterval(interval);
   }, []);
 
-  const fetchNotifications = async (limit = 10) => {
+  const fetchNotifications = useCallback(async (limit = 10) => {
     try {
       const token = localStorage.getItem('token');
       if (!token) return;
@@ -54,9 +54,9 @@ export const NotificationProvider = ({ children }) => {
     } catch (error) {
       console.error('Failed to fetch notifications:', error);
     }
-  };
+  }, []);
 
-  const markAsRead = async (notificationIds) => {
+  const markAsRead = useCallback(async (notificationIds) => {
     try {
       const token = localStorage.getItem('token');
       if (!token) return;
@@ -78,9 +78,9 @@ export const NotificationProvider = ({ children }) => {
     } catch (error) {
       console.error('Failed to mark notifications as read:', error);
     }
-  };
+  }, []);
 
-  const markAllAsRead = async () => {
+  const markAllAsRead = useCallback(async () => {
     try {
       const token = localStorage.getItem('token');
       if (!token) return;
@@ -95,15 +95,15 @@ export const NotificationProvider = ({ children }) => {
     } catch (error) {
       console.error('Failed to mark all notifications as read:', error);
     }
-  };
+  }, []);
 
   // Simulate receiving a new notification (for testing)
-  const addNotification = (notification) => {
+  const addNotification = useCallback((notification) => {
     setNotifications(prev => [notification, ...prev]);
     if (!notification.read) {
       setUnreadCount(prev => prev + 1);
     }
-  };
+  }, []);
 
   const value = {
     unreadCount,

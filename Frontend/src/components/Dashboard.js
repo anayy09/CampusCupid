@@ -519,27 +519,29 @@ function DashboardPage() {
                         Settings
                       </Button>
                     </Grid>
-                    <Grid item xs={12} sm={6} md={3}>
-                      <Button
-                        fullWidth
-                        variant="outlined"
-                        startIcon={<ActivityIcon />}
-                        onClick={() => navigate('/activity')}
-                        sx={{
-                          py: 2,
-                          textTransform: 'none',
-                          fontWeight: 600,
-                          borderColor: 'divider',
-                          color: 'text.primary',
-                          '&:hover': {
-                            borderColor: 'primary.main',
-                            backgroundColor: 'rgba(233, 30, 99, 0.04)',
-                          }
-                        }}
-                      >
-                        Activity Log
-                      </Button>
-                    </Grid>
+                    {user?.isAdmin && (
+                      <Grid item xs={12} sm={6} md={3}>
+                        <Button
+                          fullWidth
+                          variant="outlined"
+                          startIcon={<ActivityIcon />}
+                          onClick={() => navigate('/activity-log')}
+                          sx={{
+                            py: 2,
+                            textTransform: 'none',
+                            fontWeight: 600,
+                            borderColor: 'divider',
+                            color: 'text.primary',
+                            '&:hover': {
+                              borderColor: 'primary.main',
+                              backgroundColor: 'rgba(233, 30, 99, 0.04)',
+                            }
+                          }}
+                        >
+                          Activity Log
+                        </Button>
+                      </Grid>
+                    )}
                     <Grid item xs={12} sm={6} md={3}>
                       <Button
                         fullWidth
