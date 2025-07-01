@@ -144,6 +144,7 @@ type RegistrationRequest struct {
 	InterestedIn      string   `json:"interestedIn" binding:"required"`
 	LookingFor        string   `json:"lookingFor" binding:"required"`
 	Interests         []string `json:"interests" binding:"required"`
+	Bio               string   `json:"bio" binding:"required,min=50"`
 	SexualOrientation string   `json:"sexualOrientation"`
 	Photos            []string `json:"photos" binding:"required,minphotos"`
 	ProfilePictureURL string   `json:"profilePictureURL"`
@@ -167,6 +168,7 @@ type UpdateProfileRequest struct {
 	InterestedIn      string   `json:"interestedIn"`
 	LookingFor        string   `json:"lookingFor"`
 	SexualOrientation string   `json:"sexualOrientation"`
+	Bio               string   `json:"bio"`
 	Photos            []string `json:"photos"`
 	AgeRange          string   `json:"ageRange"`
 	Distance          int      `json:"distance"`

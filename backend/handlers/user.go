@@ -159,6 +159,7 @@ func Register(c *gin.Context) {
 		InterestedIn:      req.InterestedIn,
 		LookingFor:        req.LookingFor,
 		Interests:         req.Interests,
+		Bio:               req.Bio,
 		SexualOrientation: req.SexualOrientation,
 		Photos:            req.Photos,        // Photos are now expected to be URLs from the upload endpoint
 		ProfilePictureURL: profilePictureURL, // Set the profile picture URL to the first photo
@@ -424,6 +425,9 @@ func UpdateUserProfile(c *gin.Context) {
 	}
 	if updateData.LookingFor != "" {
 		user.LookingFor = updateData.LookingFor
+	}
+	if updateData.Bio != "" {
+		user.Bio = updateData.Bio
 	}
 	if updateData.SexualOrientation != "" {
 		user.SexualOrientation = updateData.SexualOrientation
