@@ -19,7 +19,14 @@ import {
   Card,
   CardContent,
   Fab,
-  LinearProgress
+  LinearProgress,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
+  Menu,
+  MenuItem
 } from '@mui/material';
 import { 
   CloseRounded as CloseIcon, 
@@ -27,7 +34,9 @@ import {
   ArrowBackRounded as ArrowBackIcon,
   InfoRounded as InfoIcon,
   LocationOnRounded as LocationIcon,
-  StarRounded as StarIcon
+  StarRounded as StarIcon,
+  ReportRounded as ReportIcon,
+  BlockRounded as BlockIcon
 } from '@mui/icons-material';
 import NavBar from './common/NavBar';
 
@@ -49,6 +58,18 @@ function MatcherPage() {
   const [imageLoadError, setImageLoadError] = useState(false);
   const [matchAlert, setMatchAlert] = useState({ open: false, message: '' });
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [reportDialogOpen, setReportDialogOpen] = useState(false);
+  const [blockDialogOpen, setBlockDialogOpen] = useState(false);
+  const [reportReason, setReportReason] = useState('');
+  const [anchorEl, setAnchorEl] = useState(null);
+
+  const handleMenuOpen = (event) => {
+    setAnchorEl(event.currentTarget);
+  };
+
+  const handleMenuClose = () => {
+    setAnchorEl(null);
+  };
 
   const nextProfile = useCallback(() => {
     const currentIndex = profiles.findIndex(profile => profile.id === currentProfile.id);
@@ -234,6 +255,64 @@ function MatcherPage() {
 
   const handleCloseAlert = () => {
     setMatchAlert({ ...matchAlert, open: false });
+  };
+
+  const handleReportUser = async () => {
+    if (!currentProfile || !reportReason.trim()) return;
+    
+    try {
+      const token = localStorage.getItem('token');
+      await axios.post(`${API_URL}/report/${currentProfile.id}`, {
+        reason: reportReason
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      setMatchAlert({ 
+        open: true, 
+        message: `User reported successfully` 
+      });
+      
+      setReportDialogOpen(false);
+      setReportReason('');
+    } catch (error) {
+      console.error('Error reporting user:', error);
+      setMatchAlert({ 
+        open: true, 
+        message: 'Failed to report user' 
+      });
+    }
+  };
+
+  const handleBlockUser = async () => {
+    if (!currentProfile) return;
+    
+    try {
+      const token = localStorage.getItem('token');
+      await axios.post(`${API_URL}/block/${currentProfile.id}`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      setMatchAlert({ 
+        open: true, 
+        message: `${currentProfile.firstName} has been blocked` 
+      });
+      
+      setBlockDialogOpen(false);
+      // Remove the blocked user from current profiles and move to next
+      setTimeout(() => {
+        nextProfile();
+        setSwipeDirection(null);
+        setOffsetX(0);
+        setImageLoadError(false);
+      }, 300);
+    } catch (error) {
+      console.error('Error blocking user:', error);
+      setMatchAlert({ 
+        open: true, 
+        message: 'Failed to block user' 
+      });
+    }
   };
 
   return (
@@ -531,16 +610,15 @@ function MatcherPage() {
                 </Fab>
 
                 <Fab
-                  onClick={() => {/* Handle info/details */}}
+                  onClick={handleMenuOpen}
                   sx={{
                     backgroundColor: 'white',
-                    color: 'primary.main',
-                    border: `2px solid ${theme.palette.primary.main}`,
+                    color: 'text.secondary',
+                    border: `2px solid ${theme.palette.divider}`,
                     width: 56,
                     height: 56,
                     '&:hover': {
-                      backgroundColor: 'primary.main',
-                      color: 'white',
+                      backgroundColor: 'background.paper',
                       transform: 'scale(1.1)',
                     },
                     transition: 'all 0.2s ease'
@@ -566,6 +644,35 @@ function MatcherPage() {
                   <FavoriteIcon sx={{ fontSize: 32 }} />
                 </Fab>
               </Box>
+
+              {/* Action Menu */}
+              <Menu
+                anchorEl={anchorEl}
+                open={Boolean(anchorEl)}
+                onClose={handleMenuClose}
+                PaperProps={{
+                  sx: {
+                    borderRadius: theme.customTokens.borderRadius.medium,
+                    border: `1px solid ${theme.palette.divider}`,
+                    mt: 1
+                  }
+                }}
+              >
+                <MenuItem onClick={() => {
+                  setReportDialogOpen(true);
+                  handleMenuClose();
+                }}>
+                  <ReportIcon sx={{ mr: 1 }} />
+                  Report User
+                </MenuItem>
+                <MenuItem onClick={() => {
+                  setBlockDialogOpen(true);
+                  handleMenuClose();
+                }}>
+                  <BlockIcon sx={{ mr: 1 }} />
+                  Block User
+                </MenuItem>
+              </Menu>
             </Stack>
           )}
         </Container>
@@ -589,6 +696,92 @@ function MatcherPage() {
           {matchAlert.message}
         </Alert>
       </Snackbar>
+
+      {/* Report User Dialog */}
+      <Dialog
+        open={reportDialogOpen}
+        onClose={() => setReportDialogOpen(false)}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: theme.customTokens.borderRadius.xl,
+            border: `1px solid ${theme.palette.divider}`,
+          }
+        }}
+      >
+        <DialogTitle sx={{ fontWeight: 700 }}>
+          Report {currentProfile?.firstName}
+        </DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            Please let us know why you're reporting this user. This will help us maintain a safe community.
+          </Typography>
+          <TextField
+            fullWidth
+            multiline
+            rows={4}
+            placeholder="Describe the issue..."
+            value={reportReason}
+            onChange={(e) => setReportReason(e.target.value)}
+            sx={{ mt: 1 }}
+          />
+        </DialogContent>
+        <DialogActions sx={{ p: 3 }}>
+          <Button 
+            onClick={() => setReportDialogOpen(false)}
+            variant="outlined"
+          >
+            Cancel
+          </Button>
+          <Button 
+            onClick={handleReportUser}
+            variant="contained"
+            color="error"
+            disabled={!reportReason.trim()}
+          >
+            Submit Report
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Block User Dialog */}
+      <Dialog
+        open={blockDialogOpen}
+        onClose={() => setBlockDialogOpen(false)}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: theme.customTokens.borderRadius.xl,
+            border: `1px solid ${theme.palette.divider}`,
+          }
+        }}
+      >
+        <DialogTitle sx={{ fontWeight: 700 }}>
+          Block {currentProfile?.firstName}?
+        </DialogTitle>
+        <DialogContent>
+          <Typography variant="body1" color="text.secondary">
+            Are you sure you want to block this user? They won't be able to see your profile or send you messages, and you won't see them in your potential matches.
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ p: 3 }}>
+          <Button 
+            onClick={() => setBlockDialogOpen(false)}
+            variant="outlined"
+          >
+            Cancel
+          </Button>
+          <Button 
+            onClick={handleBlockUser}
+            variant="contained"
+            color="error"
+          >
+            Block User
+          </Button>
+        </DialogActions>
+      </Dialog>
     </>
   );
 }

@@ -7,6 +7,8 @@ import MatcherPage from "./components/matcher";
 import DashboardPage from "./components/Dashboard";
 import MatchesPage from "./components/MatchesPage";
 import SettingsPage from "./components/SettingsPage";
+import ActivityLogPage from "./components/ActivityLogPage";
+import AdminReportsPage from "./components/AdminReportsPage";
 import ThemeProvider from "./components/common/ThemeProvider";
 import { CssBaseline } from "@mui/material";
 import EditProfilePage from "./components/EditProfilePage";
@@ -28,6 +30,8 @@ function App() {
           <Route path="/matches" element={<MatchesPage />} />
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="/editprofile" element={<EditProfilePage />} />
+          <Route path="/activity" element={<ActivityLogPage />} />
+          <Route path="/admin/reports" element={<AdminReportsPage />} />
         </Routes>
       </Router>
     </ThemeProvider>

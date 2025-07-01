@@ -21,7 +21,16 @@ import {
   useTheme,
   useMediaQuery,
   IconButton,
-  Chip
+  Chip,
+  List,
+  ListItem,
+  ListItemAvatar,
+  ListItemText,
+  Avatar,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions
 } from '@mui/material';
 import {
   NotificationsRounded as NotificationsIcon,
@@ -30,7 +39,9 @@ import {
   AccountCircleRounded as AccountIcon,
   LogoutRounded as LogoutIcon,
   DeleteRounded as DeleteIcon,
-  SaveRounded as SaveIcon
+  SaveRounded as SaveIcon,
+  BlockRounded as BlockIcon,
+  PersonRemoveRounded as UnblockIcon
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
@@ -48,6 +59,9 @@ function SettingsPage() {
   const [openSnackbar, setOpenSnackbar] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
   const [snackbarSeverity, setSnackbarSeverity] = useState('success');
+  const [blockedUsers, setBlockedUsers] = useState([]);
+  const [unblockDialogOpen, setUnblockDialogOpen] = useState(false);
+  const [userToUnblock, setUserToUnblock] = useState(null);
   
   const [settings, setSettings] = useState({
     notifications: {
@@ -90,6 +104,11 @@ function SettingsPage() {
         });
 
         setUser(response.data);
+        
+        // Set blocked users if available
+        if (response.data.blockedUsers) {
+          setBlockedUsers(response.data.blockedUsers);
+        }
         
         // Populate settings with user data if available
         if (response.data) {
@@ -231,6 +250,28 @@ function SettingsPage() {
 
   const handleCloseSnackbar = () => {
     setOpenSnackbar(false);
+  };
+
+  const handleUnblockUser = async () => {
+    if (!userToUnblock) return;
+    
+    try {
+      const token = localStorage.getItem('token');
+      
+      await axios.delete(`${API_URL}/block/${userToUnblock}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      setBlockedUsers(prev => prev.filter(id => id !== userToUnblock));
+      setSuccess('User unblocked successfully');
+      setOpenSnackbar(true);
+      setUnblockDialogOpen(false);
+      setUserToUnblock(null);
+    } catch (err) {
+      console.error('Error unblocking user:', err);
+      setError('Failed to unblock user');
+      setOpenSnackbar(true);
+    }
   };
 
   if (loading) {
@@ -543,6 +584,82 @@ function SettingsPage() {
               </Card>
             </Grid>
             
+            {/* Blocked Users Management */}
+            <Grid item xs={12}>
+              <Card 
+                elevation={0}
+                sx={{ 
+                  borderRadius: theme.customTokens.borderRadius.xl,
+                  border: `1px solid ${theme.palette.divider}`,
+                }}
+              >
+                <CardContent sx={{ p: 4 }}>
+                  <Stack direction="row" alignItems="center" spacing={2} sx={{ mb: 3 }}>
+                    <BlockIcon sx={{ fontSize: 28, color: 'error.main' }} />
+                    <Typography variant="h5" sx={{ fontWeight: 700 }}>
+                      Blocked Users
+                    </Typography>
+                  </Stack>
+                  <Divider sx={{ mb: 3 }} />
+                  
+                  {blockedUsers.length === 0 ? (
+                    <Box sx={{ textAlign: 'center', py: 4 }}>
+                      <BlockIcon sx={{ fontSize: 48, color: 'text.secondary', opacity: 0.5, mb: 2 }} />
+                      <Typography variant="body1" color="text.secondary">
+                        No blocked users
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        Users you block will appear here
+                      </Typography>
+                    </Box>
+                  ) : (
+                    <List sx={{ width: '100%' }}>
+                      {blockedUsers.map((userId, index) => (
+                        <ListItem
+                          key={userId}
+                          sx={{
+                            border: `1px solid ${theme.palette.divider}`,
+                            borderRadius: 2,
+                            mb: 2,
+                            '&:last-child': { mb: 0 }
+                          }}
+                        >
+                          <ListItemAvatar>
+                            <Avatar sx={{ bgcolor: 'error.light' }}>
+                              <BlockIcon />
+                            </Avatar>
+                          </ListItemAvatar>
+                          <ListItemText
+                            primary={`User #${userId}`}
+                            secondary="Blocked user"
+                          />
+                          <Button
+                            variant="outlined"
+                            size="small"
+                            startIcon={<UnblockIcon />}
+                            onClick={() => {
+                              setUserToUnblock(userId);
+                              setUnblockDialogOpen(true);
+                            }}
+                            sx={{
+                              borderColor: 'error.main',
+                              color: 'error.main',
+                              '&:hover': {
+                                borderColor: 'error.dark',
+                                backgroundColor: 'rgba(244, 67, 54, 0.04)'
+                              }
+                            }}
+                          >
+                            Unblock
+                          </Button>
+                        </ListItem>
+                      ))}
+                    </List>
+                  )}
+                </CardContent>
+              </Card>
+            </Grid>
+            
             {/* Save Button */}
             <Grid item xs={12}>
               <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
@@ -578,6 +695,44 @@ function SettingsPage() {
           </Grid>
         </Container>
       </Box>
+
+      {/* Unblock User Dialog */}
+      <Dialog
+        open={unblockDialogOpen}
+        onClose={() => setUnblockDialogOpen(false)}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: theme.customTokens.borderRadius.xl,
+            border: `1px solid ${theme.palette.divider}`,
+          }
+        }}
+      >
+        <DialogTitle sx={{ fontWeight: 700 }}>
+          Unblock User?
+        </DialogTitle>
+        <DialogContent>
+          <Typography variant="body1" color="text.secondary">
+            Are you sure you want to unblock User #{userToUnblock}? This will allow them to see your profile and interact with you again.
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ p: 3 }}>
+          <Button 
+            onClick={() => setUnblockDialogOpen(false)}
+            variant="outlined"
+          >
+            Cancel
+          </Button>
+          <Button 
+            onClick={handleUnblockUser}
+            variant="contained"
+            color="error"
+          >
+            Unblock User
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <Snackbar
         open={openSnackbar}

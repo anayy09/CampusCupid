@@ -36,7 +36,9 @@ import {
   CloseRounded as CloseIcon,
   TrendingUpRounded as TrendingIcon,
   NotificationsRounded as NotificationsIcon,
-  VerifiedRounded as VerifiedIcon
+  VerifiedRounded as VerifiedIcon,
+  HistoryRounded as ActivityIcon,
+  AdminPanelSettingsRounded as AdminIcon
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
@@ -510,7 +512,8 @@ function DashboardPage() {
                       <Button
                         fullWidth
                         variant="outlined"
-                        startIcon={<NotificationsIcon />}
+                        startIcon={<ActivityIcon />}
+                        onClick={() => navigate('/activity')}
                         sx={{
                           py: 2,
                           textTransform: 'none',
@@ -523,7 +526,7 @@ function DashboardPage() {
                           }
                         }}
                       >
-                        Notifications
+                        Activity Log
                       </Button>
                     </Grid>
                     <Grid item xs={12} sm={6} md={3}>
@@ -548,6 +551,33 @@ function DashboardPage() {
                       </Button>
                     </Grid>
                   </Grid>
+                  
+                  {/* Admin Panel Link - Show only for admin users */}
+                  {user?.isAdmin && (
+                    <Box sx={{ mt: 3 }}>
+                      <Divider sx={{ mb: 3 }} />
+                      <Typography variant="h6" sx={{ fontWeight: 700, mb: 2, color: 'error.main' }}>
+                        Admin Panel
+                      </Typography>
+                      <Button
+                        variant="outlined"
+                        startIcon={<AdminIcon />}
+                        onClick={() => navigate('/admin/reports')}
+                        color="error"
+                        sx={{
+                          py: 2,
+                          px: 3,
+                          textTransform: 'none',
+                          fontWeight: 600,
+                          '&:hover': {
+                            backgroundColor: 'rgba(244, 67, 54, 0.04)',
+                          }
+                        }}
+                      >
+                        View Reports
+                      </Button>
+                    </Box>
+                  )}
                 </Paper>
 
                 {/* Profile Completion */}

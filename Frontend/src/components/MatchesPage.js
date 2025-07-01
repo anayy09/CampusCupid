@@ -29,7 +29,13 @@ import {
   Stack,
   useTheme,
   Container,
-  Fab
+  Fab,
+  Menu,
+  MenuItem,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions
 } from '@mui/material';
 import {
   SendRounded as SendIcon,
@@ -39,7 +45,11 @@ import {
   SearchRounded as SearchIcon,
   PersonRounded as PersonIcon,
   ChatRounded as ChatIcon,
-  StarRounded as StarIcon
+  StarRounded as StarIcon,
+  MoreVertRounded as MoreVertIcon,
+  HeartBrokenRounded as UnmatchIcon,
+  ReportRounded as ReportIcon,
+  BlockRounded as BlockIcon
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
@@ -67,6 +77,11 @@ function MatchesPage() {
   const messagesEndRef = useRef(null);
   const [showMobileConversations, setShowMobileConversations] = useState(true);
   const [tabValue, setTabValue] = useState(0);
+  const [anchorEl, setAnchorEl] = useState(null);
+  const [unmatchDialogOpen, setUnmatchDialogOpen] = useState(false);
+  const [reportDialogOpen, setReportDialogOpen] = useState(false);
+  const [blockDialogOpen, setBlockDialogOpen] = useState(false);
+  const [reportReason, setReportReason] = useState('');
 
   const fetchConversations = useCallback(async (shouldSetDefaultMatch = false) => {
     try {
@@ -275,6 +290,90 @@ function MatchesPage() {
 
   const handleTabChange = (event, newValue) => {
     setTabValue(newValue);
+  };
+
+  const handleMenuOpen = (event) => {
+    setAnchorEl(event.currentTarget);
+  };
+
+  const handleMenuClose = () => {
+    setAnchorEl(null);
+  };
+
+  const handleUnmatchUser = async () => {
+    if (!selectedMatch) return;
+    
+    try {
+      const token = localStorage.getItem('token');
+      await axios.post(`${API_URL}/unmatch/${selectedMatch.id}`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      setError('You have unmatched with this user');
+      setOpenSnackbar(true);
+      setUnmatchDialogOpen(false);
+      
+      // Refresh conversations and go back to conversation list
+      fetchConversations();
+      fetchAllMatches();
+      setSelectedMatch(null);
+      if (isMobile) {
+        setShowMobileConversations(true);
+      }
+    } catch (err) {
+      console.error('Error unmatching user:', err);
+      setError('Failed to unmatch user');
+      setOpenSnackbar(true);
+    }
+  };
+
+  const handleReportUser = async () => {
+    if (!selectedMatch || !reportReason.trim()) return;
+    
+    try {
+      const token = localStorage.getItem('token');
+      await axios.post(`${API_URL}/report/${selectedMatch.id}`, {
+        reason: reportReason
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      setError('User reported successfully');
+      setOpenSnackbar(true);
+      setReportDialogOpen(false);
+      setReportReason('');
+    } catch (err) {
+      console.error('Error reporting user:', err);
+      setError('Failed to report user');
+      setOpenSnackbar(true);
+    }
+  };
+
+  const handleBlockUser = async () => {
+    if (!selectedMatch) return;
+    
+    try {
+      const token = localStorage.getItem('token');
+      await axios.post(`${API_URL}/block/${selectedMatch.id}`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      setError('User has been blocked');
+      setOpenSnackbar(true);
+      setBlockDialogOpen(false);
+      
+      // Refresh conversations and go back to conversation list
+      fetchConversations();
+      fetchAllMatches();
+      setSelectedMatch(null);
+      if (isMobile) {
+        setShowMobileConversations(true);
+      }
+    } catch (err) {
+      console.error('Error blocking user:', err);
+      setError('Failed to block user');
+      setOpenSnackbar(true);
+    }
   };
 
   const scrollToBottom = () => {
@@ -636,6 +735,13 @@ function MatchesPage() {
               <Typography variant="h6" noWrap component="div">
                 {selectedMatch.firstName}
               </Typography>
+              <Box sx={{ flexGrow: 1 }} />
+              <IconButton
+                onClick={handleMenuOpen}
+                sx={{ color: 'text.secondary' }}
+              >
+                <MoreVertIcon />
+              </IconButton>
             </Toolbar>
           </AppBar>
 
@@ -895,6 +1001,168 @@ function MatchesPage() {
           )}
         </Container>
       </Box>
+
+      {/* Action Menu */}
+      <Menu
+        anchorEl={anchorEl}
+        open={Boolean(anchorEl)}
+        onClose={handleMenuClose}
+        PaperProps={{
+          sx: {
+            borderRadius: theme.customTokens.borderRadius.medium,
+            border: `1px solid ${theme.palette.divider}`,
+            mt: 1
+          }
+        }}
+      >
+        <MenuItem onClick={() => {
+          setUnmatchDialogOpen(true);
+          handleMenuClose();
+        }}>
+          <UnmatchIcon sx={{ mr: 1, color: 'error.main' }} />
+          Unmatch
+        </MenuItem>
+        <MenuItem onClick={() => {
+          setReportDialogOpen(true);
+          handleMenuClose();
+        }}>
+          <ReportIcon sx={{ mr: 1 }} />
+          Report User
+        </MenuItem>
+        <MenuItem onClick={() => {
+          setBlockDialogOpen(true);
+          handleMenuClose();
+        }}>
+          <BlockIcon sx={{ mr: 1 }} />
+          Block User
+        </MenuItem>
+      </Menu>
+
+      {/* Unmatch Dialog */}
+      <Dialog
+        open={unmatchDialogOpen}
+        onClose={() => setUnmatchDialogOpen(false)}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: theme.customTokens.borderRadius.xl,
+            border: `1px solid ${theme.palette.divider}`,
+          }
+        }}
+      >
+        <DialogTitle sx={{ fontWeight: 700 }}>
+          Unmatch with {selectedMatch?.firstName}?
+        </DialogTitle>
+        <DialogContent>
+          <Typography variant="body1" color="text.secondary">
+            Are you sure you want to unmatch with {selectedMatch?.firstName}? This action cannot be undone. 
+            You will no longer be able to message each other and your conversation will be deleted.
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ p: 3 }}>
+          <Button 
+            onClick={() => setUnmatchDialogOpen(false)}
+            variant="outlined"
+          >
+            Cancel
+          </Button>
+          <Button 
+            onClick={handleUnmatchUser}
+            variant="contained"
+            color="error"
+          >
+            Unmatch
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Report User Dialog */}
+      <Dialog
+        open={reportDialogOpen}
+        onClose={() => setReportDialogOpen(false)}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: theme.customTokens.borderRadius.xl,
+            border: `1px solid ${theme.palette.divider}`,
+          }
+        }}
+      >
+        <DialogTitle sx={{ fontWeight: 700 }}>
+          Report {selectedMatch?.firstName}
+        </DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            Please let us know why you're reporting this user. This will help us maintain a safe community.
+          </Typography>
+          <TextField
+            fullWidth
+            multiline
+            rows={4}
+            placeholder="Describe the issue..."
+            value={reportReason}
+            onChange={(e) => setReportReason(e.target.value)}
+            sx={{ mt: 1 }}
+          />
+        </DialogContent>
+        <DialogActions sx={{ p: 3 }}>
+          <Button 
+            onClick={() => setReportDialogOpen(false)}
+            variant="outlined"
+          >
+            Cancel
+          </Button>
+          <Button 
+            onClick={handleReportUser}
+            variant="contained"
+            color="error"
+            disabled={!reportReason.trim()}
+          >
+            Submit Report
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Block User Dialog */}
+      <Dialog
+        open={blockDialogOpen}
+        onClose={() => setBlockDialogOpen(false)}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: theme.customTokens.borderRadius.xl,
+            border: `1px solid ${theme.palette.divider}`,
+          }
+        }}
+      >
+        <DialogTitle sx={{ fontWeight: 700 }}>
+          Block {selectedMatch?.firstName}?
+        </DialogTitle>
+        <DialogContent>
+          <Typography variant="body1" color="text.secondary">
+            Are you sure you want to block this user? They won't be able to see your profile or send you messages, 
+            and you won't see them in your potential matches.
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ p: 3 }}>
+          <Button 
+            onClick={() => setBlockDialogOpen(false)}
+            variant="outlined"
+          >
+            Cancel
+          </Button>
+          <Button 
+            onClick={handleBlockUser}
+            variant="contained"
+            color="error"
+          >
+            Block User
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {/* Error Snackbar */}
       <Snackbar
