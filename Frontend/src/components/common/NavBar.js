@@ -110,7 +110,7 @@ const NavBar = ({ user }) => {
             className="gradient-text"
             onClick={() => navigate('/')}
           >
-            Campus Cupid
+            CampusCupid
           </Typography>
           
           {!isMobile && (
@@ -188,7 +188,7 @@ const NavBar = ({ user }) => {
                 className="gradient-text"
                 sx={{ fontWeight: 800 }}
               >
-                Campus Cupid
+                CampusCupid
               </Typography>
             </Box>
             <Divider />
@@ -264,7 +264,7 @@ const NavBar = ({ user }) => {
           className="gradient-text"
           onClick={() => navigate('/dashboard')}
         >
-          Campus Cupid
+          CampusCupid
         </Typography>
         
         {/* Desktop Navigation */}

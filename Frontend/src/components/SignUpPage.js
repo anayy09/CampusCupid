@@ -657,7 +657,7 @@ function SignUpPage() {
               }}
               className="gradient-text"
             >
-              Join Campus Cupid
+              Join CampusCupid
             </Typography>
             <Typography 
               variant="body1" 

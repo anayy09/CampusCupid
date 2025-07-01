@@ -339,7 +339,7 @@ function SettingsPage() {
                 fontWeight: 400
               }}
             >
-              Customize your Campus Cupid experience
+              Customize your CampusCupid experience
             </Typography>
           </Box>
           

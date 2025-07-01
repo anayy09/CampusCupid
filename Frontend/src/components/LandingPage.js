@@ -90,7 +90,7 @@ const LandingPage = () => {
                   >
                     Find Your
                     <Box component="span" sx={{ display: 'block' }}>
-                      Campus Cupid
+                      CampusCupid
                     </Box>
                   </Typography>
                   <Typography 
@@ -236,7 +236,7 @@ const LandingPage = () => {
             >
               Why Students Choose 
               <Box component="span" className="gradient-text" sx={{ ml: 1 }}>
-                Campus Cupid
+                CampusCupid
               </Box>
             </Typography>
             <Typography 
@@ -328,7 +328,7 @@ const LandingPage = () => {
                 fontWeight: 400
               }}
             >
-              Join thousands of students who have already found meaningful connections through Campus Cupid.
+              Join thousands of students who have already found meaningful connections through CampusCupid.
             </Typography>
             <Button
               variant="contained"
