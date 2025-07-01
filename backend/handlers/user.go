@@ -779,6 +779,13 @@ func SendMessage(c *gin.Context) {
 		logger.Printf("Failed to log message activity for user ID %d: %v", senderID, err)
 	}
 
+	// Create message notification for the receiver (if they have message notifications enabled)
+	if receiver.NotificationSettings.Messages {
+		if err := CreateMessageNotification(req.ReceiverID, senderID.(uint), sender.FirstName, req.Content); err != nil {
+			logger.Printf("Failed to create message notification for user %d: %v", req.ReceiverID, err)
+		}
+	}
+
 	c.JSON(http.StatusCreated, gin.H{
 		"id":          message.ID,
 		"sender_id":   message.SenderID,
@@ -1114,8 +1121,32 @@ func LikeUser(c *gin.Context) {
 		if err != nil {
 			logger.Printf("Failed to log match activity for user ID %d: %v", userID, err)
 		}
+
+		// Create notifications for both users when a match occurs
+		var currentUser models.User
+		if err := database.DB.Where("id = ?", userID).First(&currentUser).Error; err == nil {
+			// Notify the target user about the match
+			if err := CreateMatchNotification(uint(targetIDUint), userID, currentUser.FirstName); err != nil {
+				logger.Printf("Failed to create match notification for user %d: %v", targetIDUint, err)
+			}
+			// Notify the current user about the match
+			if err := CreateMatchNotification(userID, uint(targetIDUint), targetUser.FirstName); err != nil {
+				logger.Printf("Failed to create match notification for user %d: %v", userID, err)
+			}
+		}
 	} else {
 		activityMessage = fmt.Sprintf("Liked %s", targetUser.FirstName)
+
+		// Create a like notification for the target user (only if they have notifications enabled)
+		var currentUser models.User
+		if err := database.DB.Where("id = ?", userID).First(&currentUser).Error; err == nil {
+			// Check if target user has like notifications enabled
+			if targetUser.NotificationSettings.NewMatches { // Using NewMatches for likes too
+				if err := CreateLikeNotification(uint(targetIDUint), userID, currentUser.FirstName); err != nil {
+					logger.Printf("Failed to create like notification for user %d: %v", targetIDUint, err)
+				}
+			}
+		}
 	}
 
 	err = models.LogActivity(database.DB, userID, "like", activityMessage, &targetIDPtr)

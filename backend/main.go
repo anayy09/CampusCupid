@@ -41,6 +41,7 @@ func main() {
 	database.DB.AutoMigrate(&models.Interaction{})
 	database.DB.AutoMigrate(&models.Report{})
 	database.DB.AutoMigrate(&models.ActivityLog{})
+	database.DB.AutoMigrate(&models.Notification{})
 
 	// Create a new Gin router with default middleware (logging, recovery)
 	r := gin.Default()
@@ -121,6 +122,12 @@ func main() {
 	r.PUT("/settings", middleware.AuthMiddleware(), handlers.UpdateUserSettings)
 	r.PUT("/status", middleware.AuthMiddleware(), handlers.UpdateUserOnlineStatus)
 	r.POST("/profile/:user_id/view", middleware.AuthMiddleware(), handlers.IncrementProfileViews)
+
+	// NOTIFICATION APIS
+	r.GET("/notifications", middleware.AuthMiddleware(), handlers.GetNotifications)
+	r.PUT("/notifications/read", middleware.AuthMiddleware(), handlers.MarkNotificationsRead)
+	r.PUT("/notifications/read-all", middleware.AuthMiddleware(), handlers.MarkAllNotificationsRead)
+	r.GET("/notifications/count", middleware.AuthMiddleware(), handlers.GetNotificationCount)
 
 	// Determine the port to run on (default to 8080 if not set)
 	port := os.Getenv("PORT")
