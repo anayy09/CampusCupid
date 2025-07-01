@@ -40,6 +40,7 @@ func main() {
 	database.DB.AutoMigrate(&models.Message{})
 	database.DB.AutoMigrate(&models.Interaction{})
 	database.DB.AutoMigrate(&models.Report{})
+	database.DB.AutoMigrate(&models.ActivityLog{})
 
 	// Create a new Gin router with default middleware (logging, recovery)
 	r := gin.Default()
