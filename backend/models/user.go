@@ -55,6 +55,7 @@ type User struct {
 	Latitude          float64        `gorm:"type:float" json:"latitude"`
 	Longitude         float64        `gorm:"type:float" json:"longitude"`
 	BlockedUsers      []uint         `gorm:"type:json;serializer:json" json:"blockedUsers"` // New field for blocked user IDs
+	IsAdmin           bool           `gorm:"default:false" json:"isAdmin"`                  // Admin role flag
 
 	// Location and contact fields
 	City    string `gorm:"type:varchar(100)" json:"city"`
@@ -229,6 +230,27 @@ func (u *User) GetUserStats(db *gorm.DB) UserStats {
 	stats.ProfileViews = u.ProfileViews
 
 	return stats
+}
+
+// ActivityLog tracks user actions for activity history
+type ActivityLog struct {
+	ID        uint      `gorm:"primaryKey" json:"id"`
+	UserID    uint      `gorm:"not null;index" json:"userId"`
+	Event     string    `gorm:"not null" json:"event"`    // Type of activity: "like", "match", "profile_update", "message_sent", "profile_view"
+	Message   string    `gorm:"type:text" json:"message"` // Human-readable description
+	TargetID  *uint     `json:"targetId,omitempty"`       // Optional: ID of target user (for likes, matches, etc.)
+	CreatedAt time.Time `json:"timestamp"`
+}
+
+// LogActivity creates a new activity log entry
+func LogActivity(db *gorm.DB, userID uint, event, message string, targetID *uint) error {
+	activity := ActivityLog{
+		UserID:   userID,
+		Event:    event,
+		Message:  message,
+		TargetID: targetID,
+	}
+	return db.Create(&activity).Error
 }
 
 // Report represents a user report for inappropriate behavior
