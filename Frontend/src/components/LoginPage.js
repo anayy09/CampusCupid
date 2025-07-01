@@ -16,7 +16,7 @@ import {
   useTheme,
   useMediaQuery
 } from '@mui/material';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import { 
   Visibility, 
@@ -31,14 +31,26 @@ const API_URL = 'http://localhost:8080';
 
 function LoginPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState(location.state?.email || '');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [successMessage, setSuccessMessage] = useState(location.state?.message || '');
+
+  // Clear success message after a few seconds
+  React.useEffect(() => {
+    if (successMessage) {
+      const timer = setTimeout(() => {
+        setSuccessMessage('');
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [successMessage]);
 
   const handleTogglePasswordVisibility = () => {
     setShowPassword((prev) => !prev);
@@ -161,6 +173,23 @@ function LoginPage() {
                 Sign in to continue your journey
               </Typography>
             </Box>
+
+            {/* Success Alert */}
+            {successMessage && (
+              <Alert 
+                severity="success" 
+                sx={{ 
+                  width: '100%',
+                  borderRadius: theme.customTokens.borderRadius.medium,
+                  '& .MuiAlert-message': {
+                    fontSize: '0.875rem'
+                  }
+                }}
+                onClose={() => setSuccessMessage('')}
+              >
+                {successMessage}
+              </Alert>
+            )}
 
             {/* Error Alert */}
             {error && (

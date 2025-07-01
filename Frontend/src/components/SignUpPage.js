@@ -69,6 +69,7 @@ function SignUpPage() {
   const [loadingLocation, setLoadingLocation] = useState(false);
   const [openSnackbar, setOpenSnackbar] = useState(false);
   const [submitError, setSubmitError] = useState('');
+  const [snackbarSeverity, setSnackbarSeverity] = useState('error');
 
   const [formData, setFormData] = useState({
     firstName: '',
@@ -199,35 +200,34 @@ function SignUpPage() {
 
     if (formData.photos.length + files.length > 6) {
       setSubmitError('You can upload a maximum of 6 photos');
+      setSnackbarSeverity('error');
       setOpenSnackbar(true);
       return;
     }
 
     setIsUploading(true);
-    const uploadPromises = files.map(async (file) => {
-      const formDataUpload = new FormData();
-      formDataUpload.append('file', file);
-      formDataUpload.append('upload_preset', 'campus_cupid');
-
-      try {
-        const response = await axios.post(
-          'https://api.cloudinary.com/v1_1/your_cloud_name/image/upload',
-          formDataUpload
-        );
-        return response.data.secure_url;
-      } catch (error) {
-        console.error('Upload error:', error);
-        return null;
-      }
-    });
-
+    
     try {
-      const uploadedUrls = await Promise.all(uploadPromises);
-      const validUrls = uploadedUrls.filter(url => url !== null);
+      const formDataUpload = new FormData();
+      files.forEach(file => {
+        formDataUpload.append('photos', file);
+      });
+
+      const response = await axios.post(
+        `${API_URL}/public/upload/photos`,
+        formDataUpload,
+        {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        }
+      );
+
+      const uploadedUrls = response.data.urls;
       
       setFormData(prev => ({
         ...prev,
-        photos: [...prev.photos, ...validUrls]
+        photos: [...prev.photos, ...uploadedUrls]
       }));
 
       const newPreviewUrls = files.map(file => URL.createObjectURL(file));
@@ -235,6 +235,7 @@ function SignUpPage() {
     } catch (error) {
       console.error('Error uploading photos:', error);
       setSubmitError('Failed to upload photos. Please try again.');
+      setSnackbarSeverity('error');
       setOpenSnackbar(true);
     } finally {
       setIsUploading(false);
@@ -256,15 +257,26 @@ function SignUpPage() {
     try {
       const response = await axios.post(`${API_URL}/register`, formData);
       
-      if (response.data.token) {
-        localStorage.setItem('token', response.data.token);
-        localStorage.setItem('userId', response.data.user_id.toString());
-        axios.defaults.headers.common['Authorization'] = `Bearer ${response.data.token}`;
-        navigate('/dashboard');
+      if (response.data.message && response.data.user_id) {
+        // Show success message
+        setSubmitError('Account created successfully! Please log in to continue.');
+        setSnackbarSeverity('success');
+        setOpenSnackbar(true);
+        
+        // Redirect to login page after a short delay
+        setTimeout(() => {
+          navigate('/login', { 
+            state: { 
+              message: 'Registration successful! Please log in with your credentials.',
+              email: formData.email 
+            }
+          });
+        }, 2000);
       }
     } catch (error) {
       console.error('Registration error:', error);
       setSubmitError(error.response?.data?.message || 'Registration failed. Please try again.');
+      setSnackbarSeverity('error');
       setOpenSnackbar(true);
     } finally {
       setIsSubmitting(false);
@@ -738,16 +750,16 @@ function SignUpPage() {
         </Paper>
       </Container>
 
-      {/* Error Snackbar */}
+      {/* Success/Error Snackbar */}
       <Snackbar 
         open={openSnackbar} 
-        autoHideDuration={6000} 
+        autoHideDuration={snackbarSeverity === 'success' ? 3000 : 6000} 
         onClose={() => setOpenSnackbar(false)}
         anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
       >
         <Alert 
           onClose={() => setOpenSnackbar(false)} 
-          severity="error" 
+          severity={snackbarSeverity} 
           sx={{ 
             width: '100%',
             borderRadius: theme.customTokens.borderRadius.medium,
