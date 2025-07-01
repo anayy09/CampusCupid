@@ -374,9 +374,9 @@ theme.customTokens = {
   borderRadius: {
     small: 1,
     medium: 2,
-    large: 4,
-    xl: 6,
-    full: 8,
+    large: 3,
+    xl: 4,
+    full: 5,
   },
   animations: {
     fast: '0.15s cubic-bezier(0.4, 0, 0.2, 1)',
