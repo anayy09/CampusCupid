@@ -83,6 +83,11 @@ function LoginPage() {
         localStorage.setItem('token', response.data.token);
         localStorage.setItem('userId', response.data.user_id.toString());
         
+        // Store the complete user object including isAdmin field
+        if (response.data.user) {
+          localStorage.setItem('user', JSON.stringify(response.data.user));
+        }
+        
         axios.defaults.headers.common['Authorization'] = `Bearer ${response.data.token}`;
         
         setLoading(false);

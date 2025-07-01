@@ -30,7 +30,9 @@ function App() {
           <Route path="/matches" element={<MatchesPage />} />
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="/editprofile" element={<EditProfilePage />} />
-          <Route path="/activity" element={<ActivityLogPage />} />
+          
+          {/* Admin Routes */}
+          <Route path="/activity-log" element={<ActivityLogPage />} />
           <Route path="/admin/reports" element={<AdminReportsPage />} />
         </Routes>
       </Router>

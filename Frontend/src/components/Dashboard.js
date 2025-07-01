@@ -52,7 +52,11 @@ function DashboardPage() {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState(() => {
+    // Initialize with user data from localStorage if available
+    const storedUser = localStorage.getItem('user');
+    return storedUser ? JSON.parse(storedUser) : null;
+  });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [openSnackbar, setOpenSnackbar] = useState(false);
@@ -73,7 +77,14 @@ function DashboardPage() {
           headers: { Authorization: `Bearer ${token}` }
         });
 
-        setUser(response.data);
+        // Preserve admin status from localStorage
+        const storedUser = localStorage.getItem('user');
+        const storedUserData = storedUser ? JSON.parse(storedUser) : {};
+        
+        setUser({
+          ...response.data,
+          isAdmin: storedUserData.isAdmin || response.data.isAdmin || false
+        });
         setLoading(false);
       } catch (err) {
         console.error('Error fetching profile:', err);
@@ -116,7 +127,7 @@ function DashboardPage() {
   if (loading) {
     return (
       <>
-        <NavBar user={null} />
+        <NavBar user={user} />
         <Box sx={{ 
           display: 'flex', 
           justifyContent: 'center', 

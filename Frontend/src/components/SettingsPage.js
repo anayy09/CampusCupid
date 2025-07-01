@@ -83,11 +83,11 @@ function SettingsPage() {
     account: {
       email: '',
       phone: '',
+      city: '',
+      country: '',
     }
   });
-  const [error, setError] = useState(null);
-  const [success, setSuccess] = useState(null);
-
+  
   useEffect(() => {
     const fetchUserProfile = async () => {
       try {
@@ -99,33 +99,43 @@ function SettingsPage() {
           return;
         }
 
-        const response = await axios.get(`${API_URL}/profile/${userId}`, {
+        // Fetch user profile data
+        const profileResponse = await axios.get(`${API_URL}/profile/${userId}`, {
           headers: { Authorization: `Bearer ${token}` }
         });
 
-        setUser(response.data);
+        // Fetch user settings data
+        const settingsResponse = await axios.get(`${API_URL}/settings`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+
+        setUser(profileResponse.data);
         
         // Set blocked users if available
-        if (response.data.blockedUsers) {
-          setBlockedUsers(response.data.blockedUsers);
+        if (profileResponse.data.blockedUsers) {
+          setBlockedUsers(profileResponse.data.blockedUsers);
         }
         
-        // Populate settings with user data if available
-        if (response.data) {
+        // Populate settings with combined data from both endpoints
+        if (profileResponse.data || settingsResponse.data) {
           setSettings(prevSettings => ({
             ...prevSettings,
+            notifications: settingsResponse.data.notificationSettings || prevSettings.notifications,
+            privacy: settingsResponse.data.privacySettings || prevSettings.privacy,
             preferences: {
               ...prevSettings.preferences,
-              ageRangeMin: response.data.ageRangeMin || 18,
-              ageRangeMax: response.data.ageRangeMax || 35,
-              distance: response.data.distance || 25,
-              showMe: response.data.genderPreference?.toLowerCase() === 'female' ? 'women' : 
-                     response.data.genderPreference?.toLowerCase() === 'male' ? 'men' : 'everyone',
+              ageRangeMin: profileResponse.data.ageRangeMin || 18,
+              ageRangeMax: profileResponse.data.ageRangeMax || 35,
+              distance: profileResponse.data.distance || 25,
+              showMe: profileResponse.data.genderPreference?.toLowerCase() === 'female' ? 'women' : 
+                     profileResponse.data.genderPreference?.toLowerCase() === 'male' ? 'men' : 'everyone',
             },
             account: {
               ...prevSettings.account,
-              email: response.data.email || '',
-              phone: response.data.phone || '',
+              email: profileResponse.data.email || '',
+              phone: settingsResponse.data.phone || profileResponse.data.phone || '',
+              city: settingsResponse.data.city || '',
+              country: settingsResponse.data.country || '',
             }
           }));
         }
@@ -133,7 +143,8 @@ function SettingsPage() {
         setLoading(false);
       } catch (err) {
         console.error('Error fetching profile:', err);
-        setError('Failed to load profile');
+        setSnackbarSeverity('error');
+        setSnackbarMessage('Failed to load profile');
         setOpenSnackbar(true);
         setLoading(false);
         
@@ -219,29 +230,40 @@ function SettingsPage() {
       }
 
       // Map the settings to the format expected by your API
-      const updateData = {
+      const settingsData = {
+        notificationSettings: settings.notifications,
+        privacySettings: settings.privacy,
+        city: settings.account.city || '',
+        country: settings.account.country || '',
+        phone: settings.account.phone || ''
+      };
+
+      // Make API call to update user settings using the settings endpoint
+      await axios.put(`${API_URL}/settings`, settingsData, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      // Also update preferences using the profile endpoint if they changed
+      const preferencesData = {
         ageRangeMin: settings.preferences.ageRangeMin,
         ageRangeMax: settings.preferences.ageRangeMax,
         distance: settings.preferences.distance,
         genderPreference: settings.preferences.showMe === 'women' ? 'Female' : 
                           settings.preferences.showMe === 'men' ? 'Male' : 'Both',
-        email: settings.account.email,
-        phone: settings.account.phone,
-        // Add other settings as needed for your API
-        notifications: settings.notifications,
-        privacy: settings.privacy
+        email: settings.account.email
       };
 
-      // Make API call to update user settings
-      await axios.put(`${API_URL}/profile/${userId}`, updateData, {
+      await axios.put(`${API_URL}/profile/${userId}`, preferencesData, {
         headers: { Authorization: `Bearer ${token}` }
       });
 
-      setSuccess('Settings saved successfully');
+      setSnackbarSeverity('success');
+      setSnackbarMessage('Settings saved successfully');
       setOpenSnackbar(true);
     } catch (err) {
       console.error('Error saving settings:', err);
-      setError('Failed to save settings');
+      setSnackbarSeverity('error');
+      setSnackbarMessage('Failed to save settings');
       setOpenSnackbar(true);
     } finally {
       setSaving(false);
@@ -263,13 +285,15 @@ function SettingsPage() {
       });
       
       setBlockedUsers(prev => prev.filter(id => id !== userToUnblock));
-      setSuccess('User unblocked successfully');
+      setSnackbarSeverity('success');
+      setSnackbarMessage('User unblocked successfully');
       setOpenSnackbar(true);
       setUnblockDialogOpen(false);
       setUserToUnblock(null);
     } catch (err) {
       console.error('Error unblocking user:', err);
-      setError('Failed to unblock user');
+      setSnackbarSeverity('error');
+      setSnackbarMessage('Failed to unblock user');
       setOpenSnackbar(true);
     }
   };
@@ -345,6 +369,34 @@ function SettingsPage() {
                         label="Email Address"
                         value={settings.account.email}
                         onChange={handleAccountChange('email')}
+                        variant="outlined"
+                        sx={{
+                          '& .MuiOutlinedInput-root': {
+                            backgroundColor: 'rgba(255, 255, 255, 0.8)',
+                          }
+                        }}
+                      />
+                    </Grid>
+                    <Grid item xs={12} sm={6}>
+                      <TextField
+                        fullWidth
+                        label="City"
+                        value={settings.account.city}
+                        onChange={handleAccountChange('city')}
+                        variant="outlined"
+                        sx={{
+                          '& .MuiOutlinedInput-root': {
+                            backgroundColor: 'rgba(255, 255, 255, 0.8)',
+                          }
+                        }}
+                      />
+                    </Grid>
+                    <Grid item xs={12} sm={6}>
+                      <TextField
+                        fullWidth
+                        label="Country"
+                        value={settings.account.country}
+                        onChange={handleAccountChange('country')}
                         variant="outlined"
                         sx={{
                           '& .MuiOutlinedInput-root': {
@@ -742,10 +794,10 @@ function SettingsPage() {
       >
         <Alert
           onClose={handleCloseSnackbar}
-          severity={error ? 'error' : 'success'}
+          severity={snackbarSeverity}
           sx={{ width: '100%' }}
         >
-          {error || success}
+          {snackbarMessage}
         </Alert>
       </Snackbar>
     </>

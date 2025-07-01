@@ -28,7 +28,10 @@ import {
   SettingsRounded as SettingsIcon,
   LogoutRounded as LogoutIcon,
   HomeRounded as HomeIcon,
-  NotificationsRounded as NotificationsIcon
+  NotificationsRounded as NotificationsIcon,
+  AdminPanelSettingsRounded as AdminIcon,
+  ReportRounded as ReportsIcon,
+  HistoryRounded as ActivityIcon
 } from '@mui/icons-material';
 import { useTheme } from '@mui/material/styles';
 
@@ -69,6 +72,12 @@ const NavBar = ({ user }) => {
     { label: 'Discover', path: '/matcher', icon: <FavoriteIcon />, active: location.pathname === '/matcher' },
     { label: 'Messages', path: '/matches', icon: <ChatIcon />, active: location.pathname === '/matches', badge: 3 },
   ];
+
+  // Add admin navigation items if user is admin
+  const adminNavigationItems = user?.isAdmin ? [
+    { label: 'Admin Reports', path: '/admin/reports', icon: <ReportsIcon />, active: location.pathname === '/admin/reports' },
+    { label: 'Activity Log', path: '/activity-log', icon: <ActivityIcon />, active: location.pathname === '/activity-log' },
+  ] : [];
   
   // Public pages navbar
   if (isPublicPage && !isAuthenticated) {
@@ -261,7 +270,7 @@ const NavBar = ({ user }) => {
         {/* Desktop Navigation */}
         {!isMobile && (
           <Box sx={{ display: 'flex', alignItems: 'center', flexGrow: 1, gap: 1 }}>
-            {navigationItems.map((item) => (
+            {[...navigationItems, ...adminNavigationItems].map((item) => (
               <Button
                 key={item.path}
                 onClick={() => navigate(item.path)}
@@ -376,6 +385,15 @@ const NavBar = ({ user }) => {
             <Typography variant="body2" color="text.secondary">
               {user?.email}
             </Typography>
+            {user?.isAdmin && (
+              <Chip 
+                label="Admin" 
+                size="small" 
+                color="error" 
+                sx={{ mt: 1, fontSize: '0.7rem' }}
+                icon={<AdminIcon />}
+              />
+            )}
           </Box>
           
           <MenuItem 
@@ -396,6 +414,32 @@ const NavBar = ({ user }) => {
             </ListItemIcon>
             <ListItemText primary="Settings" />
           </MenuItem>
+          
+          {/* Admin Menu Items */}
+          {user?.isAdmin && (
+            <>
+              <Divider sx={{ my: 1 }} />
+              <MenuItem 
+                onClick={() => { navigate('/admin/reports'); handleMenuClose(); }}
+                sx={{ py: 1.5, px: 3 }}
+              >
+                <ListItemIcon>
+                  <ReportsIcon fontSize="small" color="warning" />
+                </ListItemIcon>
+                <ListItemText primary="Admin Reports" />
+              </MenuItem>
+              <MenuItem 
+                onClick={() => { navigate('/activity-log'); handleMenuClose(); }}
+                sx={{ py: 1.5, px: 3 }}
+              >
+                <ListItemIcon>
+                  <ActivityIcon fontSize="small" color="info" />
+                </ListItemIcon>
+                <ListItemText primary="Activity Log" />
+              </MenuItem>
+            </>
+          )}
+          
           <Divider sx={{ my: 1 }} />
           <MenuItem 
             onClick={handleLogout}
@@ -438,17 +482,18 @@ const NavBar = ({ user }) => {
                   {user?.firstName || 'User'}
                 </Typography>
                 <Chip 
-                  label="Online" 
+                  label={user?.isAdmin ? "Admin" : "Online"} 
                   size="small" 
-                  color="success" 
+                  color={user?.isAdmin ? "error" : "success"} 
                   sx={{ fontSize: '0.75rem' }}
+                  icon={user?.isAdmin ? <AdminIcon /> : undefined}
                 />
               </Box>
             </Box>
           </Box>
           <Divider />
           <List sx={{ px: 2 }}>
-            {navigationItems.map((item) => (
+            {[...navigationItems, ...adminNavigationItems].map((item) => (
               <ListItem 
                 key={item.path}
                 button 

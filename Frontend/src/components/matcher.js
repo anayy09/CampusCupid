@@ -175,6 +175,31 @@ function MatcherPage() {
     fetchProfiles();
   }, [navigate]);
 
+  // Track profile views when currentProfile changes
+  useEffect(() => {
+    const trackProfileView = async () => {
+      if (!currentProfile) return;
+      
+      try {
+        const token = localStorage.getItem('token');
+        
+        if (!token) return;
+        
+        // Call the profile view tracking endpoint
+        await axios.post(`${API_URL}/profile/${currentProfile.id}/view`, {}, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        
+        console.log(`Profile view tracked for user ${currentProfile.id}`);
+      } catch (error) {
+        console.error('Error tracking profile view:', error);
+        // Don't show error to user, just log it
+      }
+    };
+
+    trackProfileView();
+  }, [currentProfile]);
+
   // Handle key press events for arrow keys
   useEffect(() => {
     const handleKeyDown = (e) => {
