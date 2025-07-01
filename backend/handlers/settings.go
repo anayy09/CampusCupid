@@ -3,7 +3,9 @@ package handlers
 import (
 	"datingapp/database"
 	"datingapp/models"
+	"fmt"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -174,15 +176,28 @@ func IncrementProfileViews(c *gin.Context) {
 		return
 	}
 
-	targetUserID := c.Param("user_id")
-	if targetUserID == "" {
+	targetUserIDStr := c.Param("user_id")
+	if targetUserIDStr == "" {
 		respondWithError(c, http.StatusBadRequest, "User ID required")
 		return
 	}
 
+	targetUserID, err := strconv.ParseUint(targetUserIDStr, 10, 32)
+	if err != nil {
+		respondWithError(c, http.StatusBadRequest, "Invalid user ID format")
+		return
+	}
+
 	// Don't count self-views
-	if targetUserID == string(rune(viewerID)) {
+	if uint(targetUserID) == viewerID {
 		c.JSON(http.StatusOK, gin.H{"message": "Self-view not counted"})
+		return
+	}
+
+	// Get the target user's name for activity logging
+	var targetUser models.User
+	if err := database.DB.Select("first_name").First(&targetUser, targetUserID).Error; err != nil {
+		respondWithError(c, http.StatusNotFound, "Target user not found")
 		return
 	}
 
@@ -193,6 +208,14 @@ func IncrementProfileViews(c *gin.Context) {
 		return
 	}
 
-	logger.Printf("Profile view recorded: User %d viewed User %s", viewerID, targetUserID)
+	// Log the profile view activity for the viewer
+	targetIDPtr := uint(targetUserID)
+	activityMessage := fmt.Sprintf("Viewed %s's profile", targetUser.FirstName)
+	err = models.LogActivity(database.DB, viewerID, "profile_view", activityMessage, &targetIDPtr)
+	if err != nil {
+		logger.Printf("Failed to log profile view activity for user ID %d: %v", viewerID, err)
+	}
+
+	logger.Printf("Profile view recorded: User %d viewed User %d", viewerID, targetUserID)
 	c.JSON(http.StatusOK, gin.H{"message": "Profile view recorded"})
 }
