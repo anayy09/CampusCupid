@@ -28,12 +28,12 @@ import {
   SettingsRounded as SettingsIcon,
   LogoutRounded as LogoutIcon,
   HomeRounded as HomeIcon,
-  NotificationsRounded as NotificationsIcon,
   AdminPanelSettingsRounded as AdminIcon,
   ReportRounded as ReportsIcon,
   HistoryRounded as ActivityIcon
 } from '@mui/icons-material';
 import { useTheme } from '@mui/material/styles';
+import NotificationDropdown from './NotificationDropdown';
 
 const NavBar = ({ user }) => {
   const navigate = useNavigate();
@@ -306,16 +306,7 @@ const NavBar = ({ user }) => {
         {/* Right side actions */}
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, ml: 'auto' }}>
           {/* Notifications */}
-          {!isMobile && (
-            <IconButton
-              size="large"
-              sx={{ color: 'text.secondary' }}
-            >
-              <Badge badgeContent={2} color="error" variant="dot">
-                <NotificationsIcon />
-              </Badge>
-            </IconButton>
-          )}
+          {!isMobile && <NotificationDropdown />}
           
           {/* User Profile */}
           <IconButton
