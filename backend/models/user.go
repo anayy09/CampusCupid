@@ -9,6 +9,27 @@ import (
 	"gorm.io/gorm"
 )
 
+// NotificationSettings represents user notification preferences
+type NotificationSettings struct {
+	NewMatches bool `json:"newMatches"`
+	Messages   bool `json:"messages"`
+	AppUpdates bool `json:"appUpdates"`
+}
+
+// PrivacySettings represents user privacy preferences
+type PrivacySettings struct {
+	ShowOnlineStatus bool `json:"showOnlineStatus"`
+	ShowLastActive   bool `json:"showLastActive"`
+	ShowDistance     bool `json:"showDistance"`
+}
+
+// UserStats represents computed user statistics
+type UserStats struct {
+	TotalMatches int64 `json:"totalMatches"`
+	ActiveChats  int64 `json:"activeChats"`
+	ProfileViews int   `json:"profileViews"`
+}
+
 // User represents a user in the dating app
 // User represents a user in the dating app
 type User struct {
@@ -34,6 +55,43 @@ type User struct {
 	Latitude          float64        `gorm:"type:float" json:"latitude"`
 	Longitude         float64        `gorm:"type:float" json:"longitude"`
 	BlockedUsers      []uint         `gorm:"type:json;serializer:json" json:"blockedUsers"` // New field for blocked user IDs
+
+	// Location and contact fields
+	City    string `gorm:"type:varchar(100)" json:"city"`
+	Country string `gorm:"type:varchar(100)" json:"country"`
+	Phone   string `gorm:"type:varchar(20)" json:"phone"`
+
+	// Activity tracking
+	LastActiveAt *time.Time `gorm:"type:timestamp" json:"lastActiveAt"`
+	IsOnline     bool       `gorm:"default:false" json:"isOnline"`
+	ProfileViews int        `gorm:"default:0" json:"profileViews"`
+
+	// Settings
+	NotificationSettings NotificationSettings `gorm:"type:json;serializer:json" json:"notificationSettings"`
+	PrivacySettings      PrivacySettings      `gorm:"type:json;serializer:json" json:"privacySettings"`
+}
+
+// BeforeCreate hook to set default values
+func (u *User) BeforeCreate(tx *gorm.DB) error {
+	// Set default notification settings
+	if u.NotificationSettings == (NotificationSettings{}) {
+		u.NotificationSettings = NotificationSettings{
+			NewMatches: true,
+			Messages:   true,
+			AppUpdates: false,
+		}
+	}
+
+	// Set default privacy settings
+	if u.PrivacySettings == (PrivacySettings{}) {
+		u.PrivacySettings = PrivacySettings{
+			ShowOnlineStatus: true,
+			ShowLastActive:   true,
+			ShowDistance:     true,
+		}
+	}
+
+	return nil
 }
 
 // Interaction tracks user interactions (likes, dislikes, matches)
@@ -123,6 +181,15 @@ type UpdatePreferencesRequest struct {
 	GenderPreference string `json:"genderPreference"`
 }
 
+// UpdateSettingsRequest defines fields for updating user settings
+type UpdateSettingsRequest struct {
+	NotificationSettings *NotificationSettings `json:"notificationSettings,omitempty"`
+	PrivacySettings      *PrivacySettings      `json:"privacySettings,omitempty"`
+	City                 string                `json:"city,omitempty"`
+	Country              string                `json:"country,omitempty"`
+	Phone                string                `json:"phone,omitempty"`
+}
+
 // HashPassword hashes the user's password using bcrypt
 func (u *User) HashPassword(password string) error {
 	bytes, err := bcrypt.GenerateFromPassword([]byte(password), 14) // Cost factor of 14
@@ -136,6 +203,32 @@ func (u *User) HashPassword(password string) error {
 // CheckPassword verifies the provided password against the stored hash
 func (u *User) CheckPassword(password string) error {
 	return bcrypt.CompareHashAndPassword([]byte(u.Password), []byte(password))
+}
+
+// GetUserStats computes and returns user statistics
+func (u *User) GetUserStats(db *gorm.DB) UserStats {
+	var stats UserStats
+
+	// Count total matches
+	db.Model(&Interaction{}).Where("(user_id = ? OR target_id = ?) AND matched = ?", u.ID, u.ID, true).Count(&stats.TotalMatches)
+
+	// Count active chats (conversations with messages)
+	var uniquePartners []uint
+	db.Raw(`
+		SELECT DISTINCT 
+			CASE 
+				WHEN sender_id = ? THEN receiver_id 
+				ELSE sender_id 
+			END as partner_id
+		FROM messages 
+		WHERE sender_id = ? OR receiver_id = ?
+	`, u.ID, u.ID, u.ID).Scan(&uniquePartners)
+	stats.ActiveChats = int64(len(uniquePartners))
+
+	// Profile views from user record
+	stats.ProfileViews = u.ProfileViews
+
+	return stats
 }
 
 // Report represents a user report for inappropriate behavior

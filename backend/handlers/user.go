@@ -272,23 +272,39 @@ func GetUserProfile(c *gin.Context) {
 		return
 	}
 
+	// Get user statistics
+	stats := user.GetUserStats(database.DB)
+
 	c.JSON(http.StatusOK, gin.H{
-		"id":                user.ID,
-		"firstName":         user.FirstName,
-		"email":             user.Email,
-		"dateOfBirth":       user.DateOfBirth,
-		"gender":            user.Gender,
-		"interestedIn":      user.InterestedIn,
-		"lookingFor":        user.LookingFor,
-		"interests":         user.Interests,
-		"sexualOrientation": user.SexualOrientation,
-		"photos":            user.Photos,
-		"ageRange":          user.AgeRange,
-		"distance":          user.Distance,
-		"genderPreference":  user.GenderPreference,
-		"profilePictureURL": user.ProfilePictureURL,
-		"latitude":          user.Latitude,
-		"longitude":         user.Longitude,
+		"id":                   user.ID,
+		"firstName":            user.FirstName,
+		"email":                user.Email,
+		"dateOfBirth":          user.DateOfBirth,
+		"gender":               user.Gender,
+		"interestedIn":         user.InterestedIn,
+		"lookingFor":           user.LookingFor,
+		"interests":            user.Interests,
+		"sexualOrientation":    user.SexualOrientation,
+		"photos":               user.Photos,
+		"ageRange":             user.AgeRange,
+		"distance":             user.Distance,
+		"genderPreference":     user.GenderPreference,
+		"profilePictureURL":    user.ProfilePictureURL,
+		"latitude":             user.Latitude,
+		"longitude":            user.Longitude,
+		"city":                 user.City,
+		"country":              user.Country,
+		"phone":                user.Phone,
+		"bio":                  user.Bio,
+		"lastActiveAt":         user.LastActiveAt,
+		"isOnline":             user.IsOnline,
+		"blockedUsers":         user.BlockedUsers,
+		"notificationSettings": user.NotificationSettings,
+		"privacySettings":      user.PrivacySettings,
+		// Statistics
+		"totalMatches": stats.TotalMatches,
+		"activeChats":  stats.ActiveChats,
+		"profileViews": stats.ProfileViews,
 	})
 }
 

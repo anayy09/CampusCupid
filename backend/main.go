@@ -35,8 +35,11 @@ func main() {
 	// Initialize database connection
 	database.Connect()
 
-	// Migrate the Message model
+	// Migrate the User and Message models with new fields
+	database.DB.AutoMigrate(&models.User{})
 	database.DB.AutoMigrate(&models.Message{})
+	database.DB.AutoMigrate(&models.Interaction{})
+	database.DB.AutoMigrate(&models.Report{})
 
 	// Create a new Gin router with default middleware (logging, recovery)
 	r := gin.Default()
@@ -64,7 +67,9 @@ func main() {
 	r.POST("/login", handlers.Login)
 	// Public route for uploading photos during registration (no auth required)
 	r.POST("/public/upload/photos", handlers.PublicUploadPhotos) // For registration without auth
+
 	// Protected routes for photo management (auth required)
+	r.POST("/upload", middleware.AuthMiddleware(), handlers.UploadPhoto) // Single photo upload for EditProfile
 	r.POST("/upload/photos", middleware.AuthMiddleware(), handlers.UploadPhotos)
 	r.DELETE("/upload/photos", middleware.AuthMiddleware(), handlers.DeletePhoto)
 
@@ -109,6 +114,12 @@ func main() {
 
 	// UNMATCH A USER
 	r.POST("/unmatch/:user_id", middleware.AuthMiddleware(), handlers.UnmatchUser)
+
+	// SETTINGS APIS
+	r.GET("/settings", middleware.AuthMiddleware(), handlers.GetUserSettings)
+	r.PUT("/settings", middleware.AuthMiddleware(), handlers.UpdateUserSettings)
+	r.PUT("/status", middleware.AuthMiddleware(), handlers.UpdateUserOnlineStatus)
+	r.POST("/profile/:user_id/view", middleware.AuthMiddleware(), handlers.IncrementProfileViews)
 
 	// Determine the port to run on (default to 8080 if not set)
 	port := os.Getenv("PORT")
