@@ -225,7 +225,31 @@ func Login(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"token": tokenString, "user_id": user.ID})
+	// Return user object without password for frontend use
+	userResponse := gin.H{
+		"token":   tokenString,
+		"user_id": user.ID,
+		"user": gin.H{
+			"id":                user.ID,
+			"firstName":         user.FirstName,
+			"email":             user.Email,
+			"dateOfBirth":       user.DateOfBirth,
+			"gender":            user.Gender,
+			"interestedIn":      user.InterestedIn,
+			"lookingFor":        user.LookingFor,
+			"interests":         user.Interests,
+			"bio":               user.Bio,
+			"sexualOrientation": user.SexualOrientation,
+			"photos":            user.Photos,
+			"profilePictureURL": user.ProfilePictureURL,
+			"isAdmin":           user.IsAdmin, // Include admin status
+			"city":              user.City,
+			"country":           user.Country,
+			"phone":             user.Phone,
+		},
+	}
+
+	c.JSON(http.StatusOK, userResponse)
 }
 
 // GetUserProfile retrieves the profile details of the user by user_id
@@ -428,6 +452,13 @@ func UpdateUserProfile(c *gin.Context) {
 	if err := database.DB.WithContext(ctxUpdate).Model(&user).Updates(updateMap).Error; err != nil {
 		respondWithError(c, http.StatusInternalServerError, fmt.Sprintf("Failed to update profile: %v", err))
 		return
+	}
+
+	// Log the profile update activity
+	err = models.LogActivity(database.DB, user.ID, "profile_update", "Updated profile information", nil)
+	if err != nil {
+		// Log the error but don't fail the response
+		logger.Printf("Failed to log profile update activity for user ID %d: %v", user.ID, err)
 	}
 
 	logger.Printf("Profile updated successfully for user ID %d", user.ID)
@@ -747,6 +778,14 @@ func SendMessage(c *gin.Context) {
 	if err := database.DB.Create(&message).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to send message"})
 		return
+	}
+
+	// Log the message sent activity
+	receiverIDPtr := req.ReceiverID
+	activityMessage := fmt.Sprintf("Sent a message to %s", receiver.FirstName)
+	err := models.LogActivity(database.DB, senderID.(uint), "message_sent", activityMessage, &receiverIDPtr)
+	if err != nil {
+		logger.Printf("Failed to log message activity for user ID %d: %v", senderID, err)
 	}
 
 	c.JSON(http.StatusCreated, gin.H{
@@ -1072,6 +1111,25 @@ func LikeUser(c *gin.Context) {
 		logger.Printf("Failed to commit transaction: %v", err)
 		respondWithError(c, http.StatusInternalServerError, "Failed to complete operation")
 		return
+	}
+
+	// Log the like activity
+	targetIDPtr := uint(targetIDUint)
+	var activityMessage string
+	if isMatch {
+		activityMessage = fmt.Sprintf("Matched with %s", targetUser.FirstName)
+		// Also log a match activity
+		err = models.LogActivity(database.DB, userID, "match", activityMessage, &targetIDPtr)
+		if err != nil {
+			logger.Printf("Failed to log match activity for user ID %d: %v", userID, err)
+		}
+	} else {
+		activityMessage = fmt.Sprintf("Liked %s", targetUser.FirstName)
+	}
+
+	err = models.LogActivity(database.DB, userID, "like", activityMessage, &targetIDPtr)
+	if err != nil {
+		logger.Printf("Failed to log like activity for user ID %d: %v", userID, err)
 	}
 
 	response := gin.H{
