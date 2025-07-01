@@ -38,7 +38,8 @@ import {
   NotificationsRounded as NotificationsIcon,
   VerifiedRounded as VerifiedIcon,
   HistoryRounded as ActivityIcon,
-  AdminPanelSettingsRounded as AdminIcon
+  AdminPanelSettingsRounded as AdminIcon,
+  ArrowForwardRounded as ArrowForwardIcon
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
@@ -61,6 +62,9 @@ function DashboardPage() {
   const [error, setError] = useState(null);
   const [openSnackbar, setOpenSnackbar] = useState(false);
   const [openGallery, setOpenGallery] = useState(false);
+
+  // Mock profile completion for demonstration
+  const profileCompletion = 85;
 
   useEffect(() => {
     const fetchUserProfile = async () => {
@@ -133,12 +137,12 @@ function DashboardPage() {
           justifyContent: 'center', 
           alignItems: 'center', 
           height: '100vh',
-          background: 'linear-gradient(135deg, rgba(233, 30, 99, 0.05) 0%, rgba(255, 87, 34, 0.05) 100%)'
+          background: 'linear-gradient(to top right, #FFF0F5, #FFE4E1)' // Softer gradient
         }}>
           <Stack alignItems="center" spacing={2}>
             <CircularProgress color="primary" size={48} />
             <Typography variant="h6" color="text.secondary">
-              Loading your profile...
+              Loading your dashboard...
             </Typography>
           </Stack>
         </Box>
@@ -146,30 +150,24 @@ function DashboardPage() {
     );
   }
 
-  const statsCards = [
+  const stats = [
     {
       title: 'Total Matches',
       value: user?.totalMatches || 0,
-      icon: <MatchIcon sx={{ fontSize: 40 }} />,
+      icon: <MatchIcon sx={{ fontSize: 28 }} />,
       color: theme.palette.primary.main,
-      bgColor: 'rgba(233, 30, 99, 0.1)',
-      action: () => navigate('/matches')
     },
     {
       title: 'Active Chats',
       value: user?.activeChats || 0,
-      icon: <ChatIcon sx={{ fontSize: 40 }} />,
+      icon: <ChatIcon sx={{ fontSize: 28 }} />,
       color: theme.palette.secondary.main,
-      bgColor: 'rgba(255, 87, 34, 0.1)',
-      action: () => navigate('/matches')
     },
     {
       title: 'Profile Views',
       value: user?.profileViews || 0,
-      icon: <TrendingIcon sx={{ fontSize: 40 }} />,
+      icon: <TrendingIcon sx={{ fontSize: 28 }} />,
       color: '#00BCD4',
-      bgColor: 'rgba(0, 188, 212, 0.1)',
-      action: () => navigate('/editprofile')
     }
   ];
 
@@ -179,9 +177,10 @@ function DashboardPage() {
       <Box sx={{ 
         backgroundColor: 'background.default', 
         minHeight: '100vh',
-        pt: 10
+        pt: 10,
+        background: 'linear-gradient(to top right, #FFF0F5, #FFE4E1)'
       }}>
-        <Container maxWidth="lg" sx={{ py: 4 }}>
+        <Container maxWidth="xl" sx={{ py: 4 }}>
           {/* Welcome Header */}
           <Box sx={{ mb: 4, textAlign: { xs: 'center', md: 'left' } }}>
             <Typography 
@@ -189,7 +188,7 @@ function DashboardPage() {
               sx={{ 
                 fontWeight: 800,
                 mb: 1,
-                fontSize: { xs: '2rem', md: '2.75rem' }
+                fontSize: { xs: '2.5rem', md: '3rem' }
               }}
             >
               Welcome back, 
@@ -204,7 +203,7 @@ function DashboardPage() {
                 fontWeight: 400
               }}
             >
-              Here's what's happening in your love life
+              Here's your daily snapshot. Ready to find a connection?
             </Typography>
           </Box>
 
@@ -214,199 +213,121 @@ function DashboardPage() {
               <Paper
                 elevation={0}
                 sx={{
-                  p: 3,
+                  p: {xs: 2, md: 3},
                   borderRadius: theme.customTokens.borderRadius.xl,
                   border: `1px solid ${theme.palette.divider}`,
-                  height: 'fit-content',
+                  height: '100%',
                   position: 'sticky',
                   top: 100,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'space-between'
                 }}
               >
                 <Stack spacing={3} alignItems="center">
-                  {/* Profile Picture */}
-                  <Box sx={{ position: 'relative' }}>
+                  {/* Profile Picture with Completion Ring */}
+                  <Box sx={{ position: 'relative', mb: 2 }}>
+                    <CircularProgress
+                      variant="determinate"
+                      value={profileCompletion}
+                      size={170}
+                      thickness={2.5}
+                      sx={{ 
+                        color: 'primary.main',
+                        position: 'absolute',
+                        top: '50%',
+                        left: '50%',
+                        mt: '-85px',
+                        ml: '-85px',
+                        transform: 'rotate(-90deg)',
+                        '& .MuiCircularProgress-circle': {
+                          strokeLinecap: 'round',
+                        },
+                      }}
+                    />
                     <Avatar
                       alt={user?.firstName}
                       src={user?.profilePictureURL || (user?.photos && user?.photos.length > 0 ? user.photos[0] : DEFAULT_PROFILE_IMAGE)}
                       sx={{ 
-                        width: { xs: 120, md: 150 }, 
-                        height: { xs: 120, md: 150 },
-                        border: `4px solid ${theme.palette.primary.main}`,
-                        boxShadow: `0 8px 32px rgba(233, 30, 99, 0.2)`,
+                        width: 150, 
+                        height: 150,
+                        border: `4px solid ${theme.palette.background.paper}`,
                       }}
                     />
                     <Badge
-                      badgeContent={<VerifiedIcon sx={{ fontSize: 16 }} />}
-                      color="primary"
-                      sx={{
-                        position: 'absolute',
-                        bottom: 8,
-                        right: 8,
-                        '& .MuiBadge-badge': {
-                          backgroundColor: theme.palette.primary.main,
+                      overlap="circular"
+                      anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+                      badgeContent={
+                        <VerifiedIcon color="primary" sx={{ 
+                          fontSize: 32, 
+                          background: 'white', 
                           borderRadius: '50%',
-                          width: 32,
-                          height: 32,
-                        }
-                      }}
+                          p: '2px'
+                        }} />
+                      }
                     />
                   </Box>
 
                   {/* User Info */}
                   <Box sx={{ textAlign: 'center' }}>
-                    <Typography 
-                      variant="h4" 
-                      sx={{ 
-                        fontWeight: 700,
-                        mb: 0.5,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: 1
-                      }}
-                    >
+                    <Typography variant="h4" sx={{ fontWeight: 700 }}>
                       {user?.firstName}
-                      <Typography 
-                        component="span" 
-                        sx={{ 
-                          color: 'primary.main',
-                          fontSize: 'inherit',
-                          fontWeight: 'inherit'
-                        }}
-                      >
+                      <Typography component="span" sx={{ color: 'text.secondary', fontWeight: 400 }}>
                         , {calculateAge(user?.dateOfBirth)}
                       </Typography>
                     </Typography>
                     
-                    {/* Location */}
                     {user?.location?.city && (
-                      <Box 
-                        sx={{ 
-                          display: 'flex', 
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          gap: 0.5,
-                          mb: 2
-                        }}
-                      >
+                      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0.5, mt: 1 }}>
                         <LocationIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
                         <Typography variant="body2" color="text.secondary">
                           {user?.location?.city}, {user?.location?.country || ''}
                         </Typography>
                       </Box>
                     )}
-
-                    {/* Bio */}
-                    <Typography 
-                      variant="body1" 
-                      sx={{
-                        color: 'text.secondary',
-                        fontStyle: user?.bio ? 'normal' : 'italic',
-                        mb: 2,
-                        lineHeight: 1.6
-                      }}
-                    >
-                      {user?.bio || 'No bio available'}
-                    </Typography>
-
-                    {/* Interests */}
-                    {user?.interests && user.interests.length > 0 && (
-                      <Box sx={{ mb: 3 }}>
-                        <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600 }}>
-                          Interests
-                        </Typography>
-                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, justifyContent: 'center' }}>
-                          {user.interests.slice(0, 6).map((interest, index) => (
-                            <Chip 
-                              key={index}
-                              label={interest}
-                              size="small"
-                              sx={{ 
-                                backgroundColor: 'rgba(233, 30, 99, 0.08)',
-                                color: 'primary.main',
-                                fontWeight: 500,
-                                fontSize: '0.75rem'
-                              }}
-                            />
-                          ))}
-                          {user.interests.length > 6 && (
-                            <Chip 
-                              label={`+${user.interests.length - 6} more`}
-                              size="small"
-                              variant="outlined"
-                              sx={{ 
-                                borderColor: 'primary.main',
-                                color: 'primary.main',
-                                fontSize: '0.75rem'
-                              }}
-                            />
-                          )}
-                        </Box>
-                      </Box>
-                    )}
-
-                    {/* Photo Gallery Button */}
-                    {user?.photos && user.photos.length > 0 && (
-                      <Button 
-                        onClick={handleOpenGallery} 
-                        startIcon={<GalleryIcon />}
-                        variant="outlined"
-                        size="small"
-                        sx={{ 
-                          mb: 3,
-                          borderColor: 'primary.main',
-                          color: 'primary.main',
-                          '&:hover': {
-                            backgroundColor: 'rgba(233, 30, 99, 0.04)',
-                            borderColor: 'primary.dark',
-                          }
-                        }}
-                      >
-                        View {user.photos.length} Photo{user.photos.length !== 1 ? 's' : ''}
-                      </Button>
-                    )}
-
-                    {/* Action Buttons */}
-                    <Stack spacing={2} sx={{ width: '100%' }}>
-                      <Button 
-                        variant="contained" 
-                        startIcon={<EditIcon />}
-                        onClick={() => navigate('/editprofile')}
-                        sx={{
-                          background: theme.customTokens.gradients.primary,
-                          textTransform: 'none',
-                          fontWeight: 600,
-                          py: 1.5,
-                          '&:hover': {
-                            transform: 'translateY(-1px)',
-                            boxShadow: '0 8px 25px rgba(233, 30, 99, 0.3)',
-                          }
-                        }}
-                      >
-                        Edit Profile
-                      </Button>
-                      
-                      <Button 
-                        variant="outlined" 
-                        startIcon={<MatchIcon />}
-                        onClick={() => navigate('/matcher')}
-                        sx={{
-                          borderColor: 'primary.main',
-                          color: 'primary.main',
-                          textTransform: 'none',
-                          fontWeight: 600,
-                          py: 1.5,
-                          '&:hover': {
-                            backgroundColor: 'rgba(233, 30, 99, 0.04)',
-                            borderColor: 'primary.dark',
-                            transform: 'translateY(-1px)',
-                          }
-                        }}
-                      >
-                        Find Matches
-                      </Button>
-                    </Stack>
                   </Box>
+
+                  {/* Bio */}
+                  <Typography variant="body1" sx={{ color: 'text.secondary', textAlign: 'center', fontStyle: user?.bio ? 'normal' : 'italic' }}>
+                    "{user?.bio || 'Your bio is empty. Add a few words to attract more attention!'}"
+                  </Typography>
+
+                  {/* Interests */}
+                  {user?.interests && user.interests.length > 0 && (
+                    <Box sx={{ width: '100%' }}>
+                      <Typography variant="subtitle2" sx={{ mb: 1.5, fontWeight: 600, textAlign: 'center' }}>
+                        Interests
+                      </Typography>
+                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, justifyContent: 'center' }}>
+                        {user.interests.slice(0, 5).map((interest) => (
+                          <Chip key={interest} label={interest} size="small" variant="outlined" color="primary" />
+                        ))}
+                        {user.interests.length > 5 && (
+                          <Chip label={`+${user.interests.length - 5}`} size="small" />
+                        )}
+                      </Box>
+                    </Box>
+                  )}
+                </Stack>
+                
+                {/* Action Buttons */}
+                <Stack spacing={1.5} sx={{ width: '100%', mt: 4 }}>
+                  <Button 
+                    variant="contained" 
+                    startIcon={<EditIcon />}
+                    onClick={() => navigate('/editprofile')}
+                    sx={{ textTransform: 'none', fontWeight: 600, py: 1.5 }}
+                  >
+                    Edit Profile
+                  </Button>
+                  <Button 
+                    variant="outlined" 
+                    startIcon={<GalleryIcon />}
+                    onClick={handleOpenGallery}
+                    sx={{ textTransform: 'none', fontWeight: 600, py: 1.5 }}
+                  >
+                    View Gallery ({user?.photos?.length || 0})
+                  </Button>
                 </Stack>
               </Paper>
             </Grid>
@@ -414,43 +335,59 @@ function DashboardPage() {
             {/* Main Content */}
             <Grid item xs={12} lg={8}>
               <Stack spacing={4}>
-                {/* Stats Cards */}
-                <Grid container spacing={3}>
-                  {statsCards.map((stat, index) => (
-                    <Grid item xs={12} sm={4} key={index}>
-                      <Card 
-                        elevation={0}
-                        sx={{ 
-                          p: 3,
-                          border: `1px solid ${theme.palette.divider}`,
-                          borderRadius: theme.customTokens.borderRadius.large,
-                          cursor: 'pointer',
-                          transition: 'all 0.3s ease',
-                          '&:hover': {
-                            transform: 'translateY(-4px)',
-                            boxShadow: `0 12px 32px rgba(0, 0, 0, 0.08)`,
-                            borderColor: stat.color,
-                          }
-                        }}
-                        onClick={stat.action}
-                      >
-                        <Stack spacing={2}>
-                          <Box
-                            sx={{
-                              width: 64,
-                              height: 64,
-                              borderRadius: '50%',
-                              backgroundColor: stat.bgColor,
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              color: stat.color
-                            }}
-                          >
+                {/* Matcher Card */}
+                <Card
+                  elevation={0}
+                  onClick={() => navigate('/matcher')}
+                  sx={{
+                    p: 4,
+                    borderRadius: theme.customTokens.borderRadius.xl,
+                    border: `1px solid ${theme.palette.divider}`,
+                    background: theme.customTokens.gradients.primary,
+                    color: 'white',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    transition: 'transform 0.3s ease, box-shadow 0.3s ease',
+                    '&:hover': {
+                      transform: 'translateY(-4px)',
+                      boxShadow: `0 12px 32px rgba(233, 30, 99, 0.3)`,
+                    }
+                  }}
+                >
+                  <Box>
+                    <Typography variant="h4" sx={{ fontWeight: 700, mb: 1 }}>
+                      Find Your Match
+                    </Typography>
+                    <Typography variant="body1" sx={{ opacity: 0.9 }}>
+                      Start swiping and discover new connections today.
+                    </Typography>
+                  </Box>
+                  <ArrowForwardIcon sx={{ fontSize: 40 }} />
+                </Card>
+
+                {/* Stats & Quick Actions */}
+                <Paper
+                  elevation={0}
+                  sx={{
+                    p: {xs: 2, md: 3},
+                    borderRadius: theme.customTokens.borderRadius.xl,
+                    border: `1px solid ${theme.palette.divider}`,
+                  }}
+                >
+                  <Typography variant="h5" sx={{ fontWeight: 700, mb: 3 }}>
+                    Your Activity
+                  </Typography>
+                  <Grid container spacing={3} sx={{ mb: 3 }}>
+                    {stats.map((stat) => (
+                      <Grid item xs={12} sm={4} key={stat.title}>
+                        <Stack direction="row" spacing={2} alignItems="center">
+                          <Avatar sx={{ bgcolor: `${stat.color}20`, color: stat.color, width: 56, height: 56 }}>
                             {stat.icon}
-                          </Box>
+                          </Avatar>
                           <Box>
-                            <Typography variant="h3" sx={{ fontWeight: 800, color: stat.color }}>
+                            <Typography variant="h4" sx={{ fontWeight: 700 }}>
                               {stat.value}
                             </Typography>
                             <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500 }}>
@@ -458,200 +395,60 @@ function DashboardPage() {
                             </Typography>
                           </Box>
                         </Stack>
-                      </Card>
-                    </Grid>
-                  ))}
-                </Grid>
-
-                {/* Quick Actions */}
-                <Paper
-                  elevation={0}
-                  sx={{
-                    p: 4,
-                    borderRadius: theme.customTokens.borderRadius.xl,
-                    border: `1px solid ${theme.palette.divider}`,
-                  }}
-                >
-                  <Typography variant="h5" sx={{ fontWeight: 700, mb: 3 }}>
+                      </Grid>
+                    ))}
+                  </Grid>
+                  <Divider sx={{ my: 3 }} />
+                  <Typography variant="h6" sx={{ fontWeight: 700, mb: 2 }}>
                     Quick Actions
                   </Typography>
-                  
-                  <Grid container spacing={2}>
-                    <Grid item xs={12} sm={6} md={3}>
-                      <Button
-                        fullWidth
-                        variant="outlined"
-                        startIcon={<ChatIcon />}
-                        onClick={() => navigate('/matches')}
-                        sx={{
-                          py: 2,
-                          textTransform: 'none',
-                          fontWeight: 600,
-                          borderColor: 'divider',
-                          color: 'text.primary',
-                          '&:hover': {
-                            borderColor: 'primary.main',
-                            backgroundColor: 'rgba(233, 30, 99, 0.04)',
-                          }
-                        }}
-                      >
-                        Messages
-                      </Button>
-                    </Grid>
-                    <Grid item xs={12} sm={6} md={3}>
-                      <Button
-                        fullWidth
-                        variant="outlined"
-                        startIcon={<SettingsIcon />}
-                        onClick={() => navigate('/settings')}
-                        sx={{
-                          py: 2,
-                          textTransform: 'none',
-                          fontWeight: 600,
-                          borderColor: 'divider',
-                          color: 'text.primary',
-                          '&:hover': {
-                            borderColor: 'primary.main',
-                            backgroundColor: 'rgba(233, 30, 99, 0.04)',
-                          }
-                        }}
-                      >
-                        Settings
-                      </Button>
-                    </Grid>
-                    {user?.isAdmin && (
-                      <Grid item xs={12} sm={6} md={3}>
-                        <Button
-                          fullWidth
-                          variant="outlined"
-                          startIcon={<ActivityIcon />}
-                          onClick={() => navigate('/activity-log')}
-                          sx={{
-                            py: 2,
-                            textTransform: 'none',
-                            fontWeight: 600,
-                            borderColor: 'divider',
-                            color: 'text.primary',
-                            '&:hover': {
-                              borderColor: 'primary.main',
-                              backgroundColor: 'rgba(233, 30, 99, 0.04)',
-                            }
-                          }}
-                        >
-                          Activity Log
-                        </Button>
-                      </Grid>
-                    )}
-                    <Grid item xs={12} sm={6} md={3}>
-                      <Button
-                        fullWidth
-                        variant="outlined"
-                        startIcon={<ProfileIcon />}
-                        onClick={() => navigate('/editprofile')}
-                        sx={{
-                          py: 2,
-                          textTransform: 'none',
-                          fontWeight: 600,
-                          borderColor: 'divider',
-                          color: 'text.primary',
-                          '&:hover': {
-                            borderColor: 'primary.main',
-                            backgroundColor: 'rgba(233, 30, 99, 0.04)',
-                          }
-                        }}
-                      >
-                        Edit Profile
-                      </Button>
-                    </Grid>
-                  </Grid>
-                  
-                  {/* Admin Panel Link - Show only for admin users */}
-                  {user?.isAdmin && (
-                    <Box sx={{ mt: 3 }}>
-                      <Divider sx={{ mb: 3 }} />
-                      <Typography variant="h6" sx={{ fontWeight: 700, mb: 2, color: 'error.main' }}>
-                        Admin Panel
-                      </Typography>
+                  <Stack direction={{xs: 'column', sm: 'row'}} spacing={2}>
+                    <Button fullWidth variant="outlined" startIcon={<ChatIcon />} onClick={() => navigate('/matches')}>
+                      Messages
+                    </Button>
+                    <Button fullWidth variant="outlined" startIcon={<SettingsIcon />} onClick={() => navigate('/settings')}>
+                      Settings
+                    </Button>
+                    <Button fullWidth variant="outlined" startIcon={<NotificationsIcon />} onClick={() => navigate('/notifications')}>
+                      Notifications
+                    </Button>
+                  </Stack>
+                </Paper>
+
+                {/* Admin Panel */}
+                {user?.isAdmin && (
+                  <Paper
+                    elevation={0}
+                    sx={{
+                      p: {xs: 2, md: 3},
+                      borderRadius: theme.customTokens.borderRadius.xl,
+                      border: `1px solid ${theme.palette.error.main}`,
+                      backgroundColor: 'rgba(244, 67, 54, 0.05)'
+                    }}
+                  >
+                    <Typography variant="h5" sx={{ fontWeight: 700, mb: 2, color: 'error.dark' }}>
+                      Admin Tools
+                    </Typography>
+                    <Stack direction={{xs: 'column', sm: 'row'}} spacing={2}>
                       <Button
                         variant="outlined"
+                        color="error"
                         startIcon={<AdminIcon />}
                         onClick={() => navigate('/admin/reports')}
-                        color="error"
-                        sx={{
-                          py: 2,
-                          px: 3,
-                          textTransform: 'none',
-                          fontWeight: 600,
-                          '&:hover': {
-                            backgroundColor: 'rgba(244, 67, 54, 0.04)',
-                          }
-                        }}
                       >
                         View Reports
                       </Button>
-                    </Box>
-                  )}
-                </Paper>
-
-                {/* Profile Completion */}
-                <Paper
-                  elevation={0}
-                  sx={{
-                    p: 4,
-                    borderRadius: theme.customTokens.borderRadius.xl,
-                    border: `1px solid ${theme.palette.divider}`,
-                    background: 'linear-gradient(135deg, rgba(233, 30, 99, 0.02) 0%, rgba(255, 87, 34, 0.02) 100%)',
-                  }}
-                >
-                  <Typography variant="h5" sx={{ fontWeight: 700, mb: 2 }}>
-                    Profile Completion
-                  </Typography>
-                  <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
-                    Complete your profile to get better matches and increase your visibility.
-                  </Typography>
-                  
-                  <Box sx={{ mb: 3 }}>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                      <Typography variant="body2" color="text.secondary">
-                        Profile Strength
-                      </Typography>
-                      <Typography variant="body2" color="primary.main" sx={{ fontWeight: 600 }}>
-                        85%
-                      </Typography>
-                    </Box>
-                    <Box
-                      sx={{
-                        width: '100%',
-                        height: 8,
-                        borderRadius: 4,
-                        backgroundColor: 'rgba(233, 30, 99, 0.1)',
-                        overflow: 'hidden'
-                      }}
-                    >
-                      <Box
-                        sx={{
-                          width: '85%',
-                          height: '100%',
-                          background: theme.customTokens.gradients.primary,
-                          borderRadius: 4,
-                        }}
-                      />
-                    </Box>
-                  </Box>
-
-                  <Button
-                    variant="contained"
-                    startIcon={<EditIcon />}
-                    onClick={() => navigate('/editprofile')}
-                    sx={{
-                      background: theme.customTokens.gradients.primary,
-                      textTransform: 'none',
-                      fontWeight: 600,
-                    }}
-                  >
-                    Complete Profile
-                  </Button>
-                </Paper>
+                      <Button
+                        variant="outlined"
+                        color="error"
+                        startIcon={<ActivityIcon />}
+                        onClick={() => navigate('/activity-log')}
+                      >
+                        Activity Log
+                      </Button>
+                    </Stack>
+                  </Paper>
+                )}
               </Stack>
             </Grid>
           </Grid>
