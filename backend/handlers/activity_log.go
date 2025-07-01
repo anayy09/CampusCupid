@@ -1,19 +1,14 @@
 package handlers
 
 import (
+	"datingapp/database"
+	"datingapp/models"
 	"net/http"
-	"time"
 
 	"github.com/gin-gonic/gin"
 )
 
-type ActivityEntry struct {
-	Event     string    `json:"event"`
-	Message   string    `json:"message"`
-	Timestamp time.Time `json:"timestamp"`
-}
-
-// GetActivityLog returns recent user activity (mocked for now)
+// GetActivityLog returns recent user activity from the database
 // @Summary Get user activity log
 // @Description Returns a list of recent user actions like likes, matches, profile updates.
 // @Tags users
@@ -23,13 +18,27 @@ type ActivityEntry struct {
 // @Failure 401 {object} map[string]string "Unauthorized"
 // @Router /activity-log [get]
 func GetActivityLog(c *gin.Context) {
-	// Mocked activity log; replace with actual DB queries if needed
 	userID := c.GetInt("userID")
 
-	logs := []ActivityEntry{
-		{"like", "You liked user #42", time.Now().Add(-2 * time.Hour)},
-		{"match", "Matched with user #37", time.Now().Add(-90 * time.Minute)},
-		{"profile_update", "Updated your bio", time.Now().Add(-1 * time.Hour)},
+	var activities []models.ActivityLog
+	// Get the last 50 activities for this user, ordered by most recent
+	if err := database.DB.Where("user_id = ?", userID).
+		Order("created_at DESC").
+		Limit(50).
+		Find(&activities).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve activity log"})
+		return
+	}
+
+	// Convert to the expected format for frontend compatibility
+	logs := make([]map[string]interface{}, len(activities))
+	for i, activity := range activities {
+		logs[i] = map[string]interface{}{
+			"event":     activity.Event,
+			"message":   activity.Message,
+			"timestamp": activity.CreatedAt,
+			"targetId":  activity.TargetID,
+		}
 	}
 
 	c.JSON(http.StatusOK, gin.H{
