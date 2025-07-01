@@ -25,15 +25,21 @@ import {
   Grid,
   useMediaQuery,
   Fab,
-  Divider
+  Divider,
+  IconButton,
+  InputAdornment
 } from '@mui/material';
-import { 
+import {
   ArrowBackRounded as ArrowBackIcon,
   EditRounded as EditIcon,
   SaveRounded as SaveIcon,
   DeleteRounded as DeleteIcon,
   PhotoCameraRounded as PhotoIcon,
-  PersonRounded as PersonIcon
+  PersonRounded as PersonIcon,
+  VpnKeyRounded as PasswordIcon,
+  ExitToAppRounded as LogoutIcon,
+  DeleteForeverRounded as DeleteForeverIcon,
+  AddAPhotoRounded as AddAPhotoIcon
 } from '@mui/icons-material';
 import NavBar from './common/NavBar';
 
@@ -45,13 +51,13 @@ function EditProfilePage() {
   const navigate = useNavigate();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const user = JSON.parse(localStorage.getItem('user'));
-  
+
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
   const [openSnackbar, setOpenSnackbar] = useState(false);
   const [deleteDialog, setDeleteDialog] = useState(false);
-  
+
   const [formData, setFormData] = useState({
     firstName: '',
     dateOfBirth: '',
@@ -59,7 +65,8 @@ function EditProfilePage() {
     interestedIn: '',
     lookingFor: '',
     interests: [],
-    photos: []
+    photos: [],
+    bio: ''
   });
 
   useEffect(() => {
@@ -67,12 +74,15 @@ function EditProfilePage() {
       try {
         const token = localStorage.getItem('token');
         const userId = localStorage.getItem('userId');
-        
+
         const response = await axios.get(`${API_URL}/profile/${userId}`, {
           headers: { Authorization: `Bearer ${token}` }
         });
-        
-        setFormData(response.data);
+
+        setFormData({
+          ...response.data,
+          dateOfBirth: response.data.dateOfBirth ? response.data.dateOfBirth.split('T')[0] : ''
+        });
         setLoading(false);
       } catch (err) {
         setError('Failed to load profile');
@@ -100,10 +110,11 @@ function EditProfilePage() {
 
   const handleInterestAdd = (e) => {
     if (e.key === 'Enter' && e.target.value) {
-      if (!formData.interests.includes(e.target.value)) {
+      const newInterest = e.target.value.trim();
+      if (newInterest && !formData.interests.includes(newInterest)) {
         setFormData(prev => ({
           ...prev,
-          interests: [...prev.interests, e.target.value]
+          interests: [...prev.interests, newInterest]
         }));
       }
       e.target.value = '';
@@ -120,7 +131,7 @@ function EditProfilePage() {
     try {
       const token = localStorage.getItem('token');
       const response = await axios.post(`${API_URL}/upload`, formData, {
-        headers: { 
+        headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'multipart/form-data'
         }
@@ -143,7 +154,7 @@ function EditProfilePage() {
     try {
       const token = localStorage.getItem('token');
       const userId = localStorage.getItem('userId');
-      
+
       await axios.put(`${API_URL}/profile/${userId}`, formData, {
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -160,7 +171,7 @@ function EditProfilePage() {
     try {
       const token = localStorage.getItem('token');
       const userId = localStorage.getItem('userId');
-      
+
       await axios.delete(`${API_URL}/profile/${userId}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -177,18 +188,18 @@ function EditProfilePage() {
     return (
       <>
         <NavBar user={user} />
-        <Box sx={{ 
-          backgroundColor: 'background.default', 
+        <Box sx={{
+          backgroundColor: 'background.default',
           minHeight: '100vh',
           pt: 10,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center'
         }}>
-          <Card 
+          <Card
             elevation={0}
-            sx={{ 
-              p: 6, 
+            sx={{
+              p: 6,
               textAlign: 'center',
               border: `1px solid ${theme.palette.divider}`,
               borderRadius: theme.customTokens.borderRadius.xl,
@@ -207,47 +218,52 @@ function EditProfilePage() {
   return (
     <>
       <NavBar user={user} />
-      <Box sx={{ 
-        backgroundColor: 'background.default', 
+      <Box sx={{
         minHeight: '100vh',
-        pt: 10
+        background: theme.customTokens.gradients.primary,
+        pt: 10,
+        pb: 6
       }}>
-        <Container maxWidth="md" sx={{ py: 4 }}>
+        <Container maxWidth="md">
           {/* Header */}
           <Box sx={{ textAlign: 'center', mb: 4 }}>
-            <Typography 
-              variant="h3" 
-              sx={{ 
+            <Typography
+              variant="h3"
+              sx={{
                 fontWeight: 800,
                 mb: 1,
-                fontSize: { xs: '2rem', md: '2.75rem' }
+                color: 'white',
+                textShadow: '0 2px 8px rgba(0,0,0,0.2)',
+                fontSize: { xs: '2.5rem', md: '3rem' }
               }}
-              className="gradient-text"
             >
-              Edit Profile
+              Edit Your Profile
             </Typography>
-            <Typography 
-              variant="h6" 
-              sx={{ 
-                color: 'text.secondary',
+            <Typography
+              variant="h6"
+              sx={{
+                color: 'rgba(255, 255, 255, 0.8)',
                 fontWeight: 400
               }}
             >
-              Update your profile information
+              Keep your profile fresh and up-to-date!
             </Typography>
           </Box>
 
-          <Card
+          <Paper
             elevation={0}
             sx={{
               borderRadius: theme.customTokens.borderRadius.xl,
-              border: `1px solid ${theme.palette.divider}`,
+              backgroundColor: 'rgba(255, 255, 255, 0.95)',
+              backdropFilter: 'blur(20px)',
+              border: '1px solid rgba(255, 255, 255, 0.2)',
+              boxShadow: '0 32px 64px rgba(0, 0, 0, 0.12)',
               overflow: 'hidden',
             }}
           >
-            <CardContent sx={{ p: { xs: 3, sm: 4 } }}>
+            <CardContent sx={{ p: { xs: 2, sm: 3, md: 5 } }}>
               <form onSubmit={handleSubmit}>
-                <Stack spacing={4}>
+                <Stack spacing={5}>
                   {/* Profile Photo Section */}
                   <Box sx={{ textAlign: 'center' }}>
                     <input
@@ -261,9 +277,9 @@ function EditProfilePage() {
                       <Box sx={{ position: 'relative', display: 'inline-block' }}>
                         <Avatar
                           src={formData.photos[0] || DEFAULT_PROFILE_IMAGE}
-                          sx={{ 
-                            width: 120, 
-                            height: 120, 
+                          sx={{
+                            width: 140,
+                            height: 140,
                             cursor: 'pointer',
                             border: `4px solid ${theme.palette.background.paper}`,
                             boxShadow: '0 8px 32px rgba(0, 0, 0, 0.12)',
@@ -276,171 +292,171 @@ function EditProfilePage() {
                         />
                         <Fab
                           size="small"
+                          component="span"
                           sx={{
                             position: 'absolute',
-                            bottom: 0,
-                            right: 0,
-                            backgroundColor: 'primary.main',
+                            bottom: 5,
+                            right: 5,
+                            background: theme.customTokens.gradients.primary,
                             color: 'white',
-                            width: 36,
-                            height: 36,
+                            width: 40,
+                            height: 40,
                             '&:hover': {
-                              backgroundColor: 'primary.dark',
                               transform: 'scale(1.1)',
                             }
                           }}
                         >
-                          <PhotoIcon fontSize="small" />
+                          <AddAPhotoIcon />
                         </Fab>
                       </Box>
                     </label>
-                    <Typography 
-                      variant="body2" 
-                      sx={{ 
-                        mt: 2, 
+                    <Typography
+                      variant="body2"
+                      sx={{
+                        mt: 2,
                         color: 'text.secondary',
                         fontWeight: 500
                       }}
                     >
-                      Click to change profile photo
+                      Click image to change main profile photo
                     </Typography>
                   </Box>
 
-                  <Divider />
+                  <Divider sx={{ my: 0 }} />
 
                   {/* Form Fields */}
-                  <Grid container spacing={3}>
-                    <Grid item xs={12} sm={6}>
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
+                    <Box sx={{ width: { xs: '100%', sm: `calc(50% - ${theme.spacing(1.5)})` } }}>
                       <TextField
                         fullWidth
                         label="First Name"
+                        name="firstName"
                         value={formData.firstName}
-                        onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+                        onChange={handleInputChange}
                         variant="outlined"
-                        sx={{
-                          '& .MuiOutlinedInput-root': {
-                            backgroundColor: 'rgba(255, 255, 255, 0.8)',
-                          }
-                        }}
                       />
-                    </Grid>
-                    
-                    <Grid item xs={12} sm={6}>
+                    </Box>
+
+                    <Box sx={{ width: { xs: '100%', sm: `calc(50% - ${theme.spacing(1.5)})` } }}>
                       <TextField
                         fullWidth
                         label="Date of Birth"
+                        name="dateOfBirth"
                         type="date"
                         value={formData.dateOfBirth}
-                        onChange={(e) => setFormData({ ...formData, dateOfBirth: e.target.value })}
+                        onChange={handleInputChange}
                         InputLabelProps={{ shrink: true }}
-                        sx={{
-                          '& .MuiOutlinedInput-root': {
-                            backgroundColor: 'rgba(255, 255, 255, 0.8)',
-                          }
-                        }}
                       />
-                    </Grid>
+                    </Box>
 
-                    <Grid item xs={12} sm={6}>
+                    <Box sx={{ width: '100%' }}>
+                      <TextField
+                        fullWidth
+                        label="Bio"
+                        name="bio"
+                        multiline
+                        rows={4}
+                        value={formData.bio}
+                        onChange={handleInputChange}
+                        placeholder="Tell us something interesting about yourself..."
+                        helperText={`${formData.bio ? formData.bio.length : 0}/500 characters`}
+                        inputProps={{ maxLength: 500 }}
+                      />
+                    </Box>
+
+                    <Box sx={{ width: { xs: '100%', sm: `calc(50% - ${theme.spacing(1.5)})` } }}>
                       <TextField
                         fullWidth
                         select
                         label="Gender"
+                        name="gender"
                         value={formData.gender}
-                        onChange={(e) => setFormData({ ...formData, gender: e.target.value })}
-                        sx={{
-                          '& .MuiOutlinedInput-root': {
-                            backgroundColor: 'rgba(255, 255, 255, 0.8)',
-                          }
-                        }}
+                        onChange={handleInputChange}
                       >
                         <MenuItem value="Male">Male</MenuItem>
                         <MenuItem value="Female">Female</MenuItem>
                         <MenuItem value="Non-Binary">Non-Binary</MenuItem>
                         <MenuItem value="Other">Other</MenuItem>
                       </TextField>
-                    </Grid>
+                    </Box>
 
-                    <Grid item xs={12} sm={6}>
+                    <Box sx={{ width: { xs: '100%', sm: `calc(50% - ${theme.spacing(1.5)})` } }}>
                       <TextField
                         fullWidth
                         select
                         label="Interested In"
+                        name="interestedIn"
                         value={formData.interestedIn}
-                        onChange={(e) => setFormData({ ...formData, interestedIn: e.target.value })}
-                        sx={{
-                          '& .MuiOutlinedInput-root': {
-                            backgroundColor: 'rgba(255, 255, 255, 0.8)',
-                          }
-                        }}
+                        onChange={handleInputChange}
                       >
-                        <MenuItem value="Male">Male</MenuItem>
-                        <MenuItem value="Female">Female</MenuItem>
-                        <MenuItem value="Both">Both</MenuItem>
-                        <MenuItem value="Other">Other</MenuItem>
+                        <MenuItem value="Men">Men</MenuItem>
+                        <MenuItem value="Women">Women</MenuItem>
+                        <MenuItem value="Everyone">Everyone</MenuItem>
                       </TextField>
-                    </Grid>
+                    </Box>
 
-                    <Grid item xs={12}>
+                    <Box sx={{ width: '100%' }}>
                       <TextField
                         fullWidth
                         select
                         label="Looking For"
+                        name="lookingFor"
                         value={formData.lookingFor}
-                        onChange={(e) => setFormData({ ...formData, lookingFor: e.target.value })}
-                        sx={{
-                          '& .MuiOutlinedInput-root': {
-                            backgroundColor: 'rgba(255, 255, 255, 0.8)',
-                          }
-                        }}
+                        onChange={handleInputChange}
                       >
-                        <MenuItem value="Long-term relationship">Long-term relationship</MenuItem>
-                        <MenuItem value="Short-term relationship">Short-term relationship</MenuItem>
                         <MenuItem value="Casual dating">Casual dating</MenuItem>
-                        <MenuItem value="Friendship">Friendship</MenuItem>
+                        <MenuItem value="Serious relationship">Serious relationship</MenuItem>
+                        <MenuItem value="Friends">Friends</MenuItem>
                         <MenuItem value="Not sure">Not sure</MenuItem>
                       </TextField>
-                    </Grid>
-                  </Grid>
-
-                  {/* Interests Section */}
+                    </Box>
+                  </Box>
                   <Box>
-                    <Typography 
-                      variant="h6" 
-                      sx={{ 
-                        mb: 2, 
-                        fontWeight: 600 
+                    <Typography
+                      variant="h6"
+                      sx={{
+                        mb: 2,
+                        fontWeight: 600
                       }}
                     >
-                      Interests
+                      Your Interests
                     </Typography>
-                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                      {formData.interests.map((interest, index) => (
+                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 2 }}>
+                      {formData.interests.map((interest) => (
                         <Chip
-                          key={index}
+                          key={interest}
                           label={interest}
-                          onDelete={() => {
-                            const newInterests = formData.interests.filter((_, i) => i !== index);
-                            setFormData({ ...formData, interests: newInterests });
-                          }}
+                          onDelete={() => handleInterestDelete(interest)}
                           sx={{
                             backgroundColor: 'rgba(233, 30, 99, 0.08)',
                             color: 'primary.main',
-                            fontWeight: 500,
+                            fontWeight: 600,
                             '&:hover': {
                               backgroundColor: 'rgba(233, 30, 99, 0.12)',
+                            },
+                            '.MuiChip-deleteIcon': {
+                              color: 'primary.main',
+                              '&:hover': {
+                                color: 'primary.dark'
+                              }
                             }
                           }}
                         />
                       ))}
                     </Box>
+                    <TextField
+                      fullWidth
+                      label="Add an interest"
+                      onKeyDown={handleInterestAdd}
+                      placeholder="Type and press Enter to add"
+                    />
                   </Box>
 
                   {/* Action Buttons */}
-                  <Stack 
-                    direction={{ xs: 'column', sm: 'row' }} 
-                    spacing={2} 
-                    sx={{ pt: 2 }}
+                  <Stack
+                    direction={{ xs: 'column', sm: 'row' }}
+                    spacing={2}
+                    sx={{ pt: 3 }}
                   >
                     <Button
                       type="submit"
@@ -448,7 +464,7 @@ function EditProfilePage() {
                       disabled={saving}
                       startIcon={saving ? <CircularProgress size={20} color="inherit" /> : <SaveIcon />}
                       sx={{
-                        py: 2,
+                        py: 1.5,
                         background: theme.customTokens.gradients.primary,
                         fontSize: '1rem',
                         fontWeight: 700,
@@ -465,39 +481,60 @@ function EditProfilePage() {
                         }
                       }}
                     >
-                      {saving ? 'Saving...' : 'Save Changes'}
+                      {saving ? 'Saving...' : 'Save All Changes'}
                     </Button>
-                    
+
                     <Button
                       variant="outlined"
                       onClick={() => navigate('/dashboard')}
                       sx={{
-                        py: 2,
+                        py: 1.5,
                         borderWidth: 2,
                         fontWeight: 600,
                         textTransform: 'none',
-                        borderColor: 'primary.main',
-                        color: 'primary.main',
+                        borderColor: 'grey.400',
+                        color: 'text.secondary',
                         '&:hover': {
                           borderWidth: 2,
-                          backgroundColor: 'rgba(233, 30, 99, 0.04)',
-                          transform: 'translateY(-2px)',
+                          borderColor: 'text.primary',
+                          color: 'text.primary',
+                          backgroundColor: 'rgba(0, 0, 0, 0.04)',
                         }
                       }}
                     >
                       Cancel
                     </Button>
                   </Stack>
+
+                  <Divider sx={{ my: 2, borderColor: 'rgba(0,0,0,0.1)' }} />
+
+                  {/* Danger Zone */}
+                  <Box>
+                    <Typography variant="h6" color="error" sx={{ fontWeight: 700, mb: 2 }}>
+                      Danger Zone
+                    </Typography>
+                    <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+                      <Button
+                        variant="outlined"
+                        color="error"
+                        startIcon={<DeleteForeverIcon />}
+                        onClick={() => setDeleteDialog(true)}
+                        sx={{ flex: 1, textTransform: 'none', fontWeight: 600, py: 1.5 }}
+                      >
+                        Delete My Account
+                      </Button>
+                    </Stack>
+                  </Box>
                 </Stack>
               </form>
             </CardContent>
-          </Card>
+          </Paper>
         </Container>
       </Box>
 
       {/* Delete Account Dialog */}
-      <Dialog 
-        open={deleteDialog} 
+      <Dialog
+        open={deleteDialog}
         onClose={() => setDeleteDialog(false)}
         PaperProps={{
           sx: {
@@ -515,15 +552,15 @@ function EditProfilePage() {
           </Typography>
         </DialogContent>
         <DialogActions sx={{ p: 2, pt: 0 }}>
-          <Button 
+          <Button
             onClick={() => setDeleteDialog(false)}
             sx={{ textTransform: 'none', fontWeight: 600 }}
           >
             Cancel
           </Button>
-          <Button 
-            onClick={handleDeleteAccount} 
-            color="error" 
+          <Button
+            onClick={handleDeleteAccount}
+            color="error"
             variant="contained"
             sx={{ textTransform: 'none', fontWeight: 600 }}
           >
@@ -542,7 +579,7 @@ function EditProfilePage() {
         <Alert
           onClose={() => setOpenSnackbar(false)}
           severity={error ? "error" : "success"}
-          sx={{ 
+          sx={{
             width: '100%',
             borderRadius: theme.customTokens.borderRadius.medium,
           }}
