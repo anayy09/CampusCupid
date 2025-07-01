@@ -36,7 +36,9 @@ import {
   LocationOnRounded as LocationIcon,
   StarRounded as StarIcon,
   ReportRounded as ReportIcon,
-  BlockRounded as BlockIcon
+  BlockRounded as BlockIcon,
+  UndoRounded as UndoIcon,
+  StarBorderRounded as SuperLikeIcon
 } from '@mui/icons-material';
 import NavBar from './common/NavBar';
 
@@ -62,6 +64,7 @@ function MatcherPage() {
   const [blockDialogOpen, setBlockDialogOpen] = useState(false);
   const [reportReason, setReportReason] = useState('');
   const [anchorEl, setAnchorEl] = useState(null);
+  const [lastSwipedProfile, setLastSwipedProfile] = useState(null);
 
   const handleMenuOpen = (event) => {
     setAnchorEl(event.currentTarget);
@@ -72,9 +75,13 @@ function MatcherPage() {
   };
 
   const nextProfile = useCallback(() => {
+    setLastSwipedProfile(currentProfile); // Save last profile for undo
     const currentIndex = profiles.findIndex(profile => profile.id === currentProfile.id);
-    if (currentIndex < profiles.length - 1) {
-      setCurrentProfile(profiles[currentIndex + 1]);
+    const nextIndex = currentIndex + 1;
+
+    if (nextIndex < profiles.length) {
+      setCurrentProfile(profiles[nextIndex]);
+      setCurrentImageIndex(0);
     } else {
       setCurrentProfile(null);
     }
@@ -130,6 +137,16 @@ function MatcherPage() {
       setImageLoadError(false);
     }, 300);
   }, [currentProfile, nextProfile]);
+
+  const handleRewind = () => {
+    if (lastSwipedProfile) {
+      const newProfiles = [lastSwipedProfile, ...profiles.slice(profiles.findIndex(p => p.id === lastSwipedProfile.id) + 1)];
+      setProfiles(newProfiles);
+      setCurrentProfile(lastSwipedProfile);
+      setLastSwipedProfile(null); // Prevent multiple rewinds
+      setMatchAlert({ open: true, message: 'Rewinded to the last profile!' });
+    }
+  };
 
   // Fetch profiles from the backend API
   useEffect(() => {
@@ -346,9 +363,10 @@ function MatcherPage() {
       <Box sx={{ 
         backgroundColor: 'background.default', 
         minHeight: '100vh',
-        pt: 10
+        pt: 10,
+        background: 'linear-gradient(to top right, #FFF0F5, #FFE4E1)'
       }}>
-        <Container maxWidth="sm" sx={{ py: 4 }}>
+        <Container maxWidth="sm" sx={{ py: 4, display: 'flex', flexDirection: 'column', height: 'calc(100vh - 80px)' }}>
           {/* Header */}
           <Box sx={{ textAlign: 'center', mb: 4 }}>
             <Typography 
@@ -392,10 +410,15 @@ function MatcherPage() {
             <Card 
               elevation={0}
               sx={{ 
-                p: 6, 
+                p: {xs: 4, sm: 6}, 
                 textAlign: 'center',
                 border: `1px solid ${theme.palette.divider}`,
                 borderRadius: theme.customTokens.borderRadius.xl,
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'center',
+                alignItems: 'center',
+                flexGrow: 1
               }}
             >
               <StarIcon sx={{ fontSize: 64, color: 'primary.main', mb: 2 }} />
@@ -420,17 +443,18 @@ function MatcherPage() {
               </Button>
             </Card>
           ) : (
-            <Stack spacing={3}>
+            <Stack spacing={3} sx={{ flexGrow: 1, justifyContent: 'space-between' }}>
               {/* Profile Card */}
-              <Box sx={{ position: 'relative' }}>
+              <Box sx={{ position: 'relative', flexGrow: 1 }}>
                 <Card
                   ref={cardRef}
                   elevation={0}
                   sx={{
-                    height: { xs: 500, sm: 600 },
+                    width: '100%',
+                    height: '100%',
                     borderRadius: theme.customTokens.borderRadius.xl,
                     overflow: 'hidden',
-                    position: 'relative',
+                    position: 'absolute',
                     border: `1px solid ${theme.palette.divider}`,
                     cursor: 'grab',
                     '&:active': { cursor: 'grabbing' },
@@ -440,8 +464,30 @@ function MatcherPage() {
                   onTouchMove={handleTouchMove}
                   onTouchEnd={handleTouchEnd}
                 >
+                  {/* Gradient Overlay & Image Navigation */}
+                  <Box sx={{ position: 'absolute', top: 0, left: 0, right: 0, p: 2, zIndex: 2 }}>
+                    {currentProfile.photos && currentProfile.photos.length > 1 && (
+                      <Stack direction="row" spacing={1}>
+                        {currentProfile.photos.map((_, index) => (
+                          <Box
+                            key={index}
+                            onClick={() => setCurrentImageIndex(index)}
+                            sx={{
+                              flex: 1,
+                              height: 4,
+                              borderRadius: 2,
+                              backgroundColor: index === currentImageIndex ? 'rgba(255, 255, 255, 0.9)' : 'rgba(255, 255, 255, 0.4)',
+                              cursor: 'pointer',
+                              transition: 'background-color 0.3s ease'
+                            }}
+                          />
+                        ))}
+                      </Stack>
+                    )}
+                  </Box>
+
                   {/* Profile Images */}
-                  <Box sx={{ position: 'relative', height: '70%' }}>
+                  <Box sx={{ position: 'relative', height: '100%' }}>
                     {imageLoadError ? (
                       <Box
                         sx={{
@@ -470,139 +516,88 @@ function MatcherPage() {
                         </Typography>
                       </Box>
                     ) : (
-                      <>
-                        <img
-                          src={currentProfile.photos?.[currentImageIndex] || currentProfile.profilePictureURL || DEFAULT_PROFILE_IMAGE}
-                          alt={`${currentProfile.firstName}'s profile`}
-                          onError={handleImageError}
-                          style={{
-                            width: '100%',
-                            height: '100%',
-                            objectFit: 'cover',
-                          }}
-                        />
-                        
-                        {/* Image indicators */}
-                        {currentProfile.photos && currentProfile.photos.length > 1 && (
-                          <Box 
-                            sx={{ 
-                              position: 'absolute', 
-                              top: 16, 
-                              left: 16, 
-                              right: 16,
-                              display: 'flex',
-                              gap: 1
-                            }}
-                          >
-                            {currentProfile.photos.map((_, index) => (
-                              <Box
-                                key={index}
-                                sx={{
-                                  flex: 1,
-                                  height: 4,
-                                  borderRadius: 2,
-                                  backgroundColor: index <= currentImageIndex ? 'white' : 'rgba(255, 255, 255, 0.3)',
-                                  transition: 'all 0.3s ease'
-                                }}
-                              />
-                            ))}
-                          </Box>
-                        )}
-                      </>
+                      <img
+                        src={currentProfile.photos?.[currentImageIndex] || currentProfile.profilePictureURL || DEFAULT_PROFILE_IMAGE}
+                        alt={`${currentProfile.firstName}'s profile`}
+                        onError={handleImageError}
+                        style={{
+                          width: '100%',
+                          height: '100%',
+                          objectFit: 'cover',
+                        }}
+                      />
                     )}
                   </Box>
 
-                  {/* Profile Info */}
-                  <CardContent sx={{ height: '30%', p: 3 }}>
-                    <Stack spacing={2}>
-                      <Box>
-                        <Typography 
-                          variant="h4" 
-                          sx={{ 
-                            fontWeight: 700,
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 1
-                          }}
-                        >
-                          {currentProfile.firstName}
-                          <Typography 
-                            component="span" 
-                            sx={{ 
-                              color: 'primary.main',
-                              fontSize: 'inherit',
-                              fontWeight: 'inherit'
-                            }}
-                          >
-                            , {calculateAge(currentProfile.dateOfBirth)}
-                          </Typography>
+                  {/* Profile Info Overlay */}
+                  <Box
+                    sx={{
+                      position: 'absolute',
+                      bottom: 0,
+                      left: 0,
+                      right: 0,
+                      p: {xs: 2, sm: 3},
+                      background: 'linear-gradient(to top, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0) 100%)',
+                      color: 'white',
+                      zIndex: 1
+                    }}
+                  >
+                    <Typography 
+                      variant="h4" 
+                      sx={{ 
+                        fontWeight: 700,
+                        textShadow: '1px 1px 4px rgba(0,0,0,0.5)'
+                      }}
+                    >
+                      {currentProfile.firstName}, {calculateAge(currentProfile.dateOfBirth)}
+                    </Typography>
+                    
+                    {currentProfile.location?.city && (
+                      <Stack direction="row" alignItems="center" spacing={0.5} sx={{ mt: 0.5 }}>
+                        <LocationIcon sx={{ fontSize: 16 }} />
+                        <Typography variant="body2">
+                          {currentProfile.location.city}
                         </Typography>
-                        
-                        {currentProfile.location?.city && (
-                          <Box 
+                      </Stack>
+                    )}
+
+                    {currentProfile.bio && (
+                      <Typography 
+                        variant="body2" 
+                        sx={{ 
+                          mt: 1.5,
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          display: '-webkit-box',
+                          WebkitLineClamp: 2,
+                          WebkitBoxOrient: 'vertical',
+                          lineHeight: 1.5,
+                          opacity: 0.9
+                        }}
+                      >
+                        {currentProfile.bio}
+                      </Typography>
+                    )}
+
+                    {currentProfile.interests && currentProfile.interests.length > 0 && (
+                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 2 }}>
+                        {currentProfile.interests.slice(0, 4).map((interest) => (
+                          <Chip 
+                            key={interest}
+                            label={interest}
+                            size="small"
                             sx={{ 
-                              display: 'flex', 
-                              alignItems: 'center',
-                              gap: 0.5,
-                              mt: 0.5
+                              backgroundColor: 'rgba(255, 255, 255, 0.15)',
+                              color: 'white',
+                              fontWeight: 500,
+                              fontSize: '0.75rem',
+                              backdropFilter: 'blur(4px)'
                             }}
-                          >
-                            <LocationIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
-                            <Typography variant="body2" color="text.secondary">
-                              {currentProfile.location.city}
-                            </Typography>
-                          </Box>
-                        )}
+                          />
+                        ))}
                       </Box>
-
-                      {currentProfile.bio && (
-                        <Typography 
-                          variant="body1" 
-                          sx={{ 
-                            color: 'text.secondary',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            display: '-webkit-box',
-                            WebkitLineClamp: 2,
-                            WebkitBoxOrient: 'vertical',
-                            lineHeight: 1.5
-                          }}
-                        >
-                          {currentProfile.bio}
-                        </Typography>
-                      )}
-
-                      {currentProfile.interests && currentProfile.interests.length > 0 && (
-                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                          {currentProfile.interests.slice(0, 4).map((interest, index) => (
-                            <Chip 
-                              key={index}
-                              label={interest}
-                              size="small"
-                              sx={{ 
-                                backgroundColor: 'rgba(233, 30, 99, 0.08)',
-                                color: 'primary.main',
-                                fontWeight: 500,
-                                fontSize: '0.75rem'
-                              }}
-                            />
-                          ))}
-                          {currentProfile.interests.length > 4 && (
-                            <Chip 
-                              label={`+${currentProfile.interests.length - 4}`}
-                              size="small"
-                              variant="outlined"
-                              sx={{ 
-                                borderColor: 'primary.main',
-                                color: 'primary.main',
-                                fontSize: '0.75rem'
-                              }}
-                            />
-                          )}
-                        </Box>
-                      )}
-                    </Stack>
-                  </CardContent>
+                    )}
+                  </Box>
                 </Card>
               </Box>
 
@@ -610,63 +605,29 @@ function MatcherPage() {
               <Box 
                 sx={{ 
                   display: 'flex', 
-                  justifyContent: 'center', 
-                  gap: 4,
-                  px: 2
+                  justifyContent: 'space-evenly', 
+                  alignItems: 'center',
+                  py: 2
                 }}
               >
-                <Fab
-                  onClick={handleDislike}
-                  sx={{
-                    backgroundColor: 'white',
-                    color: 'error.main',
-                    border: `2px solid ${theme.palette.error.main}`,
-                    width: 64,
-                    height: 64,
-                    '&:hover': {
-                      backgroundColor: 'error.main',
-                      color: 'white',
-                      transform: 'scale(1.1)',
-                    },
-                    transition: 'all 0.2s ease'
-                  }}
-                >
-                  <CloseIcon sx={{ fontSize: 32 }} />
+                <Fab size="small" sx={{ bgcolor: 'background.paper' }} onClick={handleRewind} disabled={!lastSwipedProfile}>
+                  <UndoIcon color={lastSwipedProfile ? 'action' : 'disabled'} />
                 </Fab>
 
-                <Fab
-                  onClick={handleMenuOpen}
-                  sx={{
-                    backgroundColor: 'white',
-                    color: 'text.secondary',
-                    border: `2px solid ${theme.palette.divider}`,
-                    width: 56,
-                    height: 56,
-                    '&:hover': {
-                      backgroundColor: 'background.paper',
-                      transform: 'scale(1.1)',
-                    },
-                    transition: 'all 0.2s ease'
-                  }}
-                >
-                  <InfoIcon />
+                <Fab onClick={handleDislike} sx={{ bgcolor: 'background.paper', color: 'error.main', width: 64, height: 64 }}>
+                  <CloseIcon fontSize="large" />
                 </Fab>
 
-                <Fab
-                  onClick={handleLike}
-                  sx={{
-                    background: theme.customTokens.gradients.primary,
-                    color: 'white',
-                    width: 64,
-                    height: 64,
-                    '&:hover': {
-                      transform: 'scale(1.1)',
-                      boxShadow: '0 8px 25px rgba(233, 30, 99, 0.3)',
-                    },
-                    transition: 'all 0.2s ease'
-                  }}
-                >
-                  <FavoriteIcon sx={{ fontSize: 32 }} />
+                <Fab size="small" sx={{ bgcolor: 'background.paper', color: 'secondary.main' }}>
+                  <SuperLikeIcon />
+                </Fab>
+
+                <Fab onClick={handleLike} sx={{ background: theme.customTokens.gradients.primary, color: 'white', width: 64, height: 64 }}>
+                  <FavoriteIcon fontSize="large" />
+                </Fab>
+
+                <Fab size="small" sx={{ bgcolor: 'background.paper' }} onClick={handleMenuOpen}>
+                  <InfoIcon color="action" />
                 </Fab>
               </Box>
 
