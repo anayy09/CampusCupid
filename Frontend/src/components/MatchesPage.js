@@ -49,7 +49,9 @@ import {
   MoreVertRounded as MoreVertIcon,
   HeartBrokenRounded as UnmatchIcon,
   ReportRounded as ReportIcon,
-  BlockRounded as BlockIcon
+  BlockRounded as BlockIcon,
+  VideocamRounded as VideoIcon,
+  PhoneRounded as PhoneIcon
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
@@ -82,6 +84,7 @@ function MatchesPage() {
   const [reportDialogOpen, setReportDialogOpen] = useState(false);
   const [blockDialogOpen, setBlockDialogOpen] = useState(false);
   const [reportReason, setReportReason] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
 
   const fetchConversations = useCallback(async (shouldSetDefaultMatch = false) => {
     try {
@@ -403,6 +406,10 @@ function MatchesPage() {
     return format(date, 'MMM d, yyyy');
   };
 
+  const filteredConversations = conversations.filter(conversation => 
+    conversation.user.firstName.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   // Render conversations list
   const renderConversations = () => {
     if (loading) {
@@ -436,235 +443,130 @@ function MatchesPage() {
     }
 
     return (
-      <>
-        <Tabs
-          value={tabValue}
-          onChange={handleTabChange}
-          variant="fullWidth"
-          sx={{
-            borderBottom: 1,
-            borderColor: 'divider',
-            '& .MuiTab-root': {
-              textTransform: 'none',
-              fontWeight: 500,
-            },
-            '& .Mui-selected': {
-              color: theme.palette.primary.main,
-              fontWeight: 700,
-            }
-          }}
-        >
-          <Tab label="Messages" />
-          <Tab
-            label={
-              <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                New Matches
-                {newMatches.length > 0 && (
-                  <Chip
-                    size="small"
-                    label={newMatches.length}
-                    color="primary"
-                    sx={{ ml: 1, height: 20, fontSize: '0.75rem' }}
-                  />
-                )}
-              </Box>
-            }
+      <Stack sx={{ height: '100%' }}>
+        {/* Search Bar */}
+        <Box sx={{ p: 2, borderBottom: `1px solid ${theme.palette.divider}` }}>
+          <TextField
+            fullWidth
+            variant="outlined"
+            placeholder="Search conversations..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchIcon color="action" />
+                </InputAdornment>
+              ),
+              sx: { borderRadius: '25px' }
+            }}
           />
-        </Tabs>
+        </Box>
 
-        {tabValue === 0 ? (
-          // Messages tab
-          conversations.length > 0 ? (
-            <List sx={{ width: '100%', p: 0 }}>
-              {conversations.map((conversation, index) => (
-                <React.Fragment key={conversation.user.id}>
-                  <ListItem
-                    button
-                    alignItems="flex-start"
-                    onClick={() => handleSelectMatch(conversation)}
-                    selected={selectedMatch?.id === conversation.user.id}
-                    sx={{
-                      p: 2,
-                      bgcolor: selectedMatch?.id === conversation.user.id ? 'rgba(254, 60, 114, 0.08)' : 'transparent',
-                      '&:hover': {
-                        bgcolor: 'rgba(254, 60, 114, 0.05)'
-                      }
-                    }}
-                  >
-                    <ListItemAvatar>
-                      <Badge
-                        badgeContent={conversation.unreadCount}
-                        color="primary"
-                        invisible={conversation.unreadCount === 0}
-                        sx={{
-                          '& .MuiBadge-badge': {
-                            right: 5,
-                            top: 5,
-                            border: `2px solid ${theme.palette.background.paper}`,
-                            padding: '0 4px',
-                          }
-                        }}
-                      >
-                        <Avatar
-                          alt={conversation.user.firstName}
-                          src={conversation.user.profilePictureURL || DEFAULT_PROFILE_IMAGE}
-                          sx={{ width: 50, height: 50 }}
-                        />
-                      </Badge>
-                    </ListItemAvatar>
-                    <ListItemText
-                      primary={
-                        <Typography
-                          variant="subtitle1"
-                          component="span"
-                          fontWeight={conversation.unreadCount > 0 ? 'bold' : 'regular'}
-                        >
-                          {conversation.user.firstName}
-                        </Typography>
-                      }
-                      secondary={
-                        <React.Fragment>
-                          <Typography
-                            sx={{ display: 'inline', color: conversation.unreadCount > 0 ? 'text.primary' : 'text.secondary' }}
-                            component="span"
-                            variant="body2"
-                            noWrap
-                          >
-                            {conversation.lastMessage.content.length > 30
-                              ? conversation.lastMessage.content.substring(0, 30) + '...'
-                              : conversation.lastMessage.content}
-                          </Typography>
-                        </React.Fragment>
-                      }
-                      sx={{ ml: 1.5 }}
-                    />
-                    <Typography
-                      variant="caption"
-                      color="text.secondary"
-                      sx={{ minWidth: '40px', textAlign: 'right', mt: 1 }}
-                    >
-                      {formatConversationTime(conversation.lastMessage.created_at)}
-                    </Typography>
-                  </ListItem>
-                  {index < conversations.length - 1 && <Divider component="li" />}
-                </React.Fragment>
-              ))}
-            </List>
-          ) : (
-            <Box sx={{ p: 3, textAlign: 'center' }}>
-              <Typography variant="body1" color="text.secondary">
-                No conversations yet
-              </Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                Start chatting with your matches
-              </Typography>
-              <Button
-                variant="outlined"
-                color="primary"
-                sx={{ mt: 2, textTransform: 'none' }}
-                onClick={() => setTabValue(1)}
-              >
-                View your matches
-              </Button>
-            </Box>
-          )
-        ) : (
-          // New matches tab
-          loadingMatches ? (
-            <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
-              <CircularProgress color="primary" size={24} />
-            </Box>
-          ) : newMatches.length > 0 ? (
-            <Grid container spacing={2} sx={{ p: 2 }}>
+        {/* New Matches Carousel */}
+        {loadingMatches ? (
+          <Box sx={{ display: 'flex', justifyContent: 'center', p: 2 }}><CircularProgress size={24} /></Box>
+        ) : newMatches.length > 0 && (
+          <Box sx={{ p: 2 }}>
+            <Typography variant="subtitle2" sx={{ mb: 1.5, fontWeight: 600, color: 'text.secondary' }}>
+              New Matches
+            </Typography>
+            <Stack direction="row" spacing={2} sx={{ overflowX: 'auto', pb: 1 }}>
               {newMatches.map(match => (
-                <Grid item xs={6} sm={4} md={6} key={match.id}>
-                  <Card
-                    sx={{
-                      borderRadius: 2,
-                      overflow: 'hidden',
-                      cursor: 'pointer',
-                      transition: 'transform 0.2s',
-                      '&:hover': {
-                        transform: 'translateY(-4px)',
-                        boxShadow: '0 8px 16px rgba(0, 0, 0, 0.1)'
-                      },
-                    }}
-                    onClick={() => handleSelectMatch(match)}
-                    elevation={2}
-                  >
-                    <Box sx={{ position: 'relative' }}>
-                      <Avatar
-                        alt={match.firstName}
-                        src={match.profilePictureURL || DEFAULT_PROFILE_IMAGE}
-                        sx={{
-                          width: '100%',
-                          height: 140,
-                          borderRadius: 0
-                        }}
-                        variant="square"
-                      />
-                      <Box sx={{
-                        position: 'absolute',
-                        bottom: 0,
-                        left: 0,
-                        right: 0,
-                        bgcolor: 'rgba(0, 0, 0, 0.6)',
-                        p: 1
-                      }}>
-                        <Stack direction="row" alignItems="center" spacing={1}>
-                          <FavoriteIcon sx={{ color: '#ff4081', fontSize: 16 }} />
-                          <Typography variant="subtitle2" sx={{ color: 'white', fontWeight: 'bold' }}>
-                            New Match!
-                          </Typography>
-                        </Stack>
-                      </Box>
-                    </Box>
-                    <Box sx={{ p: 1.5 }}>
-                      <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>
-                        {match.firstName}
-                      </Typography>
-                      <Button
-                        variant="outlined"
-                        color="primary"
-                        size="small"
-                        fullWidth
-                        sx={{
-                          mt: 1,
-                          textTransform: 'none',
-                          fontSize: '0.8rem'
-                        }}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleSelectMatch(match);
-                        }}
-                      >
-                        Say Hello
-                      </Button>
-                    </Box>
-                  </Card>
-                </Grid>
+                <Stack 
+                  key={match.id} 
+                  alignItems="center" 
+                  spacing={1} 
+                  onClick={() => handleSelectMatch(match)} 
+                  sx={{ cursor: 'pointer', minWidth: 80 }}>
+                  <Avatar
+                    alt={match.firstName}
+                    src={match.profilePictureURL || DEFAULT_PROFILE_IMAGE}
+                    sx={{ width: 60, height: 60, border: `2px solid ${theme.palette.primary.main}` }}
+                  />
+                  <Typography variant="caption" noWrap>{match.firstName}</Typography>
+                </Stack>
               ))}
-            </Grid>
-          ) : (
-            <Box sx={{ p: 3, textAlign: 'center' }}>
-              <Typography variant="body1" color="text.secondary">
-                No new matches
-              </Typography>
-              <Button
-                variant="contained"
-                sx={{
-                  mt: 2,
-                  background: 'linear-gradient(45deg, #FE3C72 30%, #FF6036 90%)',
-                  textTransform: 'none'
-                }}
-                onClick={() => navigate('/matcher')}
-              >
-                Find New Matches
-              </Button>
-            </Box>
-          )
+            </Stack>
+          </Box>
         )}
-      </>
+
+        <Divider />
+
+        {/* Conversations List */}
+        <List sx={{ width: '100%', p: 0, flexGrow: 1, overflowY: 'auto' }}>
+          {filteredConversations.length > 0 ? (
+            filteredConversations.map((conversation, index) => (
+              <ListItem
+                key={conversation.user.id}
+                button
+                alignItems="flex-start"
+                onClick={() => handleSelectMatch(conversation)}
+                selected={selectedMatch?.id === conversation.user.id}
+                sx={{
+                  p: 2,
+                  transition: 'background-color 0.2s ease',
+                  borderBottom: `1px solid ${theme.palette.divider}`,
+                  '&.Mui-selected': {
+                    backgroundColor: theme.palette.action.selected,
+                    borderRight: `3px solid ${theme.palette.primary.main}`,
+                  },
+                  '&:hover': {
+                    backgroundColor: theme.palette.action.hover
+                  }
+                }}
+              >
+                <ListItemAvatar>
+                  <Badge
+                    overlap="circular"
+                    anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+                    variant="dot"
+                    invisible={!conversation.user.isOnline} // Assuming you have this data
+                    sx={{
+                      '& .MuiBadge-badge': {
+                        backgroundColor: '#44b700',
+                        color: '#44b700',
+                        boxShadow: `0 0 0 2px ${theme.palette.background.paper}`,
+                      }
+                    }}
+                  >
+                    <Avatar
+                      alt={conversation.user.firstName}
+                      src={conversation.user.profilePictureURL || DEFAULT_PROFILE_IMAGE}
+                      sx={{ width: 50, height: 50 }}
+                    />
+                  </Badge>
+                </ListItemAvatar>
+                <ListItemText
+                  primary={conversation.user.firstName}
+                  secondary={
+                    <Typography sx={{ display: 'block' }} component="span" variant="body2" noWrap color="text.secondary">
+                      {conversation.lastMessage.content}
+                    </Typography>
+                  }
+                  primaryTypographyProps={{ fontWeight: 600 }}
+                  sx={{ ml: 1.5 }}
+                />
+                <Stack alignItems="flex-end" spacing={0.5}>
+                  <Typography variant="caption" color="text.secondary">
+                    {formatConversationTime(conversation.lastMessage.created_at)}
+                  </Typography>
+                  {conversation.unreadCount > 0 && (
+                    <Badge badgeContent={conversation.unreadCount} color="primary" />
+                  )}
+                </Stack>
+              </ListItem>
+            ))
+          ) : (
+            <Box sx={{ p: 3, textAlign: 'center', mt: 4 }}>
+              <ForumIcon sx={{ fontSize: 48, color: 'text.secondary', mb: 2 }} />
+              <Typography variant="body1" color="text.secondary">
+                No conversations found.
+              </Typography>
+            </Box>
+          )}
+        </List>
+      </Stack>
     );
   };
 
@@ -679,13 +581,16 @@ function MatchesPage() {
             justifyContent: 'center',
             alignItems: 'center',
             height: '100%',
-            backgroundColor: '#f8f8f8',
+            textAlign: 'center',
             p: 3,
           }}
         >
-          <ForumIcon sx={{ fontSize: 80, color: 'text.secondary', opacity: 0.5, mb: 2 }} />
-          <Typography variant="body1" color="text.secondary" align="center">
-            Select a conversation to start messaging
+          <ChatIcon sx={{ fontSize: 80, color: 'primary.main', opacity: 0.5, mb: 2 }} />
+          <Typography variant="h5" sx={{ fontWeight: 700, mb: 1 }}>
+            Select a Conversation
+          </Typography>
+          <Typography variant="body1" color="text.secondary">
+            Choose one of your matches to see the conversation.
           </Typography>
         </Box>
       );
@@ -702,182 +607,107 @@ function MatchesPage() {
     const userId = Number(localStorage.getItem('userId'));
 
     return (
-      <>
-        <NavBar user={user} />
-        <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-          <AppBar
-            position="static"
-            color="default"
-            elevation={0}
-            sx={{
-              bgcolor: 'white',
-              borderBottom: '1px solid rgba(0, 0, 0, 0.12)',
-              pl: { xs: 1, sm: 2 }
-            }}
-          >
-            <Toolbar sx={{ minHeight: { xs: '56px', sm: '64px' } }}>
-              {isMobile && (
-                <IconButton
-                  edge="start"
-                  color="inherit"
-                  aria-label="back"
-                  onClick={handleBackToConversations}
-                  sx={{ mr: 1 }}
-                >
-                  <ArrowBackIcon />
-                </IconButton>
-              )}
-              <Avatar
-                alt={selectedMatch.firstName}
-                src={selectedMatch.profilePictureURL || DEFAULT_PROFILE_IMAGE}
-                sx={{ width: 40, height: 40, mr: 2 }}
-              />
-              <Typography variant="h6" noWrap component="div">
-                {selectedMatch.firstName}
-              </Typography>
-              <Box sx={{ flexGrow: 1 }} />
-              <IconButton
-                onClick={handleMenuOpen}
-                sx={{ color: 'text.secondary' }}
-              >
-                <MoreVertIcon />
+      <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', bgcolor: 'background.default' }}>
+        <AppBar
+          position="static"
+          color="default"
+          elevation={0}
+          sx={{
+            bgcolor: 'background.paper',
+            borderBottom: `1px solid ${theme.palette.divider}`,
+          }}
+        >
+          <Toolbar>
+            {isMobile && (
+              <IconButton edge="start" color="inherit" onClick={handleBackToConversations} sx={{ mr: 1 }}>
+                <ArrowBackIcon />
               </IconButton>
-            </Toolbar>
-          </AppBar>
+            )}
+            <Avatar
+              alt={selectedMatch.firstName}
+              src={selectedMatch.profilePictureURL || DEFAULT_PROFILE_IMAGE}
+              sx={{ width: 40, height: 40, mr: 2 }}
+            />
+            <Typography variant="h6" component="div" sx={{ fontWeight: 600 }}>
+              {selectedMatch.firstName}
+            </Typography>
+            <Box sx={{ flexGrow: 1 }} />
+            <IconButton sx={{ color: 'text.secondary' }}><PhoneIcon /></IconButton>
+            <IconButton sx={{ color: 'text.secondary' }}><VideoIcon /></IconButton>
+            <IconButton onClick={handleMenuOpen} sx={{ color: 'text.secondary' }}>
+              <MoreVertIcon />
+            </IconButton>
+          </Toolbar>
+        </AppBar>
 
-          <Box
-            sx={{
-              flexGrow: 1,
-              overflowY: 'auto',
-              p: 2,
-              display: 'flex',
-              flexDirection: 'column',
-              bgcolor: '#f8f8f8'
-            }}
-          >
+        <Box sx={{ flexGrow: 1, overflowY: 'auto', p: { xs: 2, sm: 3 } }}>
+          <Stack spacing={2}>
             {messages.length === 0 ? (
-              <Box
-                sx={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  justifyContent: 'center',
-                  alignItems: 'center',
-                  height: '100%'
-                }}
-              >
-                <Typography variant="body1" color="text.secondary">
-                  No messages yet. Say hello!
-                </Typography>
+              <Box sx={{ textAlign: 'center', mt: 4, color: 'text.secondary' }}>
+                <Typography>You matched with {selectedMatch.firstName}.</Typography>
+                <Typography variant="body2">Send a message to start the conversation!</Typography>
               </Box>
             ) : (
               messages.map((message) => {
                 const isSender = message.sender_id === userId;
-
                 return (
-                  <Box
-                    key={message.id}
-                    sx={{
-                      display: 'flex',
-                      justifyContent: isSender ? 'flex-end' : 'flex-start',
-                      mb: 1.5,
-                    }}
-                  >
-                    {!isSender && (
-                      <Avatar
-                        alt={selectedMatch.firstName}
-                        src={selectedMatch.profilePictureURL || DEFAULT_PROFILE_IMAGE}
-                        sx={{ width: 36, height: 36, mr: 1, mt: 1, display: { xs: 'none', sm: 'block' } }}
-                      />
-                    )}
-                    <Box
+                  <Stack key={message.id} direction="row" justifyContent={isSender ? 'flex-end' : 'flex-start'}>
+                    <Paper
+                      elevation={0}
                       sx={{
+                        p: 1.5,
+                        borderRadius: '20px',
+                        border: isSender ? 'none' : `1px solid ${theme.palette.divider}`,
+                        borderTopLeftRadius: isSender ? '20px' : '5px',
+                        borderTopRightRadius: isSender ? '5px' : '20px',
                         maxWidth: '70%',
-                        position: 'relative'
+                        bgcolor: isSender ? 'primary.main' : 'background.paper',
+                        color: isSender ? 'white' : 'text.primary',
                       }}
                     >
-                      <Paper
-                        elevation={0}
-                        sx={{
-                          p: 1.5,
-                          bgcolor: isSender ? '#FE3C72' : 'white',
-                          color: isSender ? 'white' : 'inherit',
-                          borderRadius: isSender
-                            ? '18px 18px 4px 18px'
-                            : '18px 18px 18px 4px',
-                          wordBreak: 'break-word'
-                        }}
-                      >
-                        <Typography variant="body1">
-                          {message.content}
-                        </Typography>
-                      </Paper>
-                      <Typography
-                        variant="caption"
-                        color={isSender ? 'rgba(255, 255, 255, 0.7)' : 'text.secondary'}
-                        sx={{
-                          display: 'block',
-                          mt: 0.5,
-                          ml: 0.5,
-                          textAlign: isSender ? 'right' : 'left'
-                        }}
-                      >
+                      <Typography variant="body1">{message.content}</Typography>
+                      <Typography variant="caption" sx={{ display: 'block', textAlign: 'right', opacity: 0.7, mt: 0.5 }}>
                         {formatMessageTime(message.created_at)}
                       </Typography>
-                    </Box>
-                  </Box>
+                    </Paper>
+                  </Stack>
                 );
               })
             )}
             <div ref={messagesEndRef} />
-          </Box>
-
-          <Box
-            component="form"
-            onSubmit={(e) => {
-              e.preventDefault();
-              sendMessage();
-            }}
-            sx={{
-              p: 2,
-              borderTop: '1px solid rgba(0, 0, 0, 0.12)',
-              bgcolor: 'white',
-              display: 'flex',
-              alignItems: 'center'
-            }}
-          >
-            <TextField
-              fullWidth
-              variant="outlined"
-              placeholder="Type a message..."
-              value={newMessage}
-              onChange={(e) => setNewMessage(e.target.value)}
-              size="medium"
-              InputProps={{
-                endAdornment: (
-                  <InputAdornment position="end">
-                    <Button
-                      variant="contained"
-                      color="primary"
-                      type="submit"
-                      disabled={!newMessage.trim()}
-                      sx={{
-                        borderRadius: '50%',
-                        minWidth: 'unset',
-                        width: 40,
-                        height: 40,
-                        background: 'linear-gradient(45deg, #FE3C72 30%, #FF6036 90%)'
-                      }}
-                    >
-                      <SendIcon />
-                    </Button>
-                  </InputAdornment>
-                ),
-                sx: { pr: 0.5 }
-              }}
-            />
-          </Box>
+          </Stack>
         </Box>
-      </>
+
+        <Box
+          component="form"
+          onSubmit={(e) => { e.preventDefault(); sendMessage(); }}
+          sx={{
+            p: { xs: 1, sm: 2 },
+            borderTop: `1px solid ${theme.palette.divider}`,
+            bgcolor: 'background.paper',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1
+          }}
+        >
+          <TextField
+            fullWidth
+            variant="outlined"
+            placeholder="Type a message..."
+            value={newMessage}
+            onChange={(e) => setNewMessage(e.target.value)}
+            autoComplete="off"
+            sx={{ 
+              '& .MuiOutlinedInput-root': {
+                borderRadius: '25px',
+              }
+            }}
+          />
+          <Fab color="primary" type="submit" size="medium" disabled={!newMessage.trim()}>
+            <SendIcon />
+          </Fab>
+        </Box>
+      </Box>
     );
   };
 
@@ -885,120 +715,38 @@ function MatchesPage() {
     <>
       <NavBar user={user} />
       <Box sx={{ 
-        backgroundColor: 'background.default', 
-        minHeight: '100vh',
-        pt: 10
+        height: '100vh',
+        pt: '64px', // Height of NavBar
+        background: 'linear-gradient(to top right, #FFF0F5, #FFE4E1)'
       }}>
-        <Container maxWidth="xl" sx={{ py: 4 }}>
-          {/* Header */}
-          <Box sx={{ textAlign: 'center', mb: 4 }}>
-            <Typography 
-              variant="h3" 
-              sx={{ 
-                fontWeight: 800,
-                mb: 1,
-                fontSize: { xs: '2rem', md: '2.75rem' }
-              }}
-              className="gradient-text"
-            >
-              Messages
-            </Typography>
-            <Typography 
-              variant="h6" 
-              sx={{ 
-                color: 'text.secondary',
-                fontWeight: 400
-              }}
-            >
-              Connect with your matches
-            </Typography>
-          </Box>
-
-          {loading ? (
-            <Card 
-              elevation={0}
-              sx={{ 
-                p: 6, 
-                textAlign: 'center',
-                border: `1px solid ${theme.palette.divider}`,
-                borderRadius: theme.customTokens.borderRadius.xl,
-              }}
-            >
-              <CircularProgress color="primary" size={48} />
-              <Typography variant="h6" sx={{ mt: 2, color: 'text.secondary' }}>
-                Loading your conversations...
-              </Typography>
-            </Card>
-          ) : (
-            <Grid container spacing={4}>
-              {/* Mobile View: Show either conversations or messages */}
-              {isMobile ? (
-                showMobileConversations ? (
-                  <Grid item xs={12}>
-                    <Paper
-                      elevation={0}
-                      sx={{
-                        borderRadius: theme.customTokens.borderRadius.xl,
-                        border: `1px solid ${theme.palette.divider}`,
-                        overflow: 'hidden',
-                        height: 'calc(100vh - 200px)',
-                      }}
-                    >
-                      {renderConversations()}
-                    </Paper>
-                  </Grid>
-                ) : (
-                  <Grid item xs={12}>
-                    <Paper
-                      elevation={0}
-                      sx={{
-                        borderRadius: theme.customTokens.borderRadius.xl,
-                        border: `1px solid ${theme.palette.divider}`,
-                        overflow: 'hidden',
-                        height: 'calc(100vh - 200px)',
-                        display: 'flex',
-                        flexDirection: 'column',
-                      }}
-                    >
-                      {renderMessages()}
-                    </Paper>
-                  </Grid>
-                )
+        <Container maxWidth="xl" sx={{ height: 'calc(100vh - 64px)', p: { xs: 0, sm: 2 } }}>
+          <Paper
+            elevation={0}
+            sx={{
+              height: '100%',
+              borderRadius: { xs: 0, sm: theme.customTokens.borderRadius.xl },
+              border: { xs: 'none', sm: `1px solid ${theme.palette.divider}` },
+              overflow: 'hidden',
+              display: 'flex'
+            }}
+          >
+            {isMobile ? (
+              showMobileConversations ? (
+                <Box sx={{ width: '100%' }}>{renderConversations()}</Box>
               ) : (
-                // Desktop View: Show both conversations and messages side by side
-                <>
-                  <Grid item xs={12} md={4}>
-                    <Paper
-                      elevation={0}
-                      sx={{
-                        borderRadius: theme.customTokens.borderRadius.xl,
-                        border: `1px solid ${theme.palette.divider}`,
-                        overflow: 'hidden',
-                        height: 'calc(100vh - 200px)',
-                      }}
-                    >
-                      {renderConversations()}
-                    </Paper>
-                  </Grid>
-                  <Grid item xs={12} md={8}>
-                    <Paper
-                      elevation={0}
-                      sx={{
-                        borderRadius: theme.customTokens.borderRadius.xl,
-                        border: `1px solid ${theme.palette.divider}`,
-                        overflow: 'hidden',
-                        height: 'calc(100vh - 200px)',
-                        display: 'flex',
-                        flexDirection: 'column',
-                      }}
-                    >
-                      {renderMessages()}
-                    </Paper>
-                  </Grid>
-                </>
-              )}
-            </Grid>
-          )}
+                <Box sx={{ width: '100%' }}>{renderMessages()}</Box>
+              )
+            ) : (
+              <>
+                <Box sx={{ width: '35%', borderRight: `1px solid ${theme.palette.divider}` }}>
+                  {renderConversations()}
+                </Box>
+                <Box sx={{ width: '65%' }}>
+                  {renderMessages()}
+                </Box>
+              </>
+            )}
+          </Paper>
         </Container>
       </Box>
 
