@@ -880,28 +880,34 @@ func GetConversations(c *gin.Context) {
 			WHERE sender_id = ? OR receiver_id = ?
 		),
 		last_messages AS (
-			SELECT DISTINCT ON (
-				CASE 
-					WHEN sender_id = ? THEN receiver_id 
-					ELSE sender_id 
-				END
-			)
-				CASE 
-					WHEN sender_id = ? THEN receiver_id 
-					ELSE sender_id 
-				END as partner_id,
-				id as last_message_id,
-				content as last_message_content,
-				created_at as last_message_time,
-				sender_id as last_message_sender_id
-			FROM messages 
-			WHERE sender_id = ? OR receiver_id = ?
-			ORDER BY 
-				CASE 
-					WHEN sender_id = ? THEN receiver_id 
-					ELSE sender_id 
-				END,
-				created_at DESC
+			SELECT 
+				partner_id,
+				last_message_id,
+				last_message_content,
+				last_message_time,
+				last_message_sender_id
+			FROM (
+				SELECT 
+					CASE 
+						WHEN sender_id = ? THEN receiver_id 
+						ELSE sender_id 
+					END as partner_id,
+					id as last_message_id,
+					content as last_message_content,
+					created_at as last_message_time,
+					sender_id as last_message_sender_id,
+					ROW_NUMBER() OVER (
+						PARTITION BY 
+							CASE 
+								WHEN sender_id = ? THEN receiver_id 
+								ELSE sender_id 
+							END 
+						ORDER BY created_at DESC
+					) as rn
+				FROM messages 
+				WHERE sender_id = ? OR receiver_id = ?
+			) ranked_messages
+			WHERE rn = 1
 		),
 		unread_counts AS (
 			SELECT 
@@ -929,7 +935,7 @@ func GetConversations(c *gin.Context) {
 
 	if err := database.DB.Raw(query,
 		currentUserID, currentUserID, currentUserID, // conversation_partners CTE
-		currentUserID, currentUserID, currentUserID, currentUserID, currentUserID, // last_messages CTE
+		currentUserID, currentUserID, currentUserID, currentUserID, // last_messages CTE
 		currentUserID, // unread_counts CTE
 	).Scan(&conversations).Error; err != nil {
 		logger.Printf("Failed to retrieve conversations for user %v: %v", currentUserID, err)
