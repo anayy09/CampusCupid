@@ -403,53 +403,44 @@ func UpdateUserProfile(c *gin.Context) {
 	// If you want to allow clearing, this is fine. If not, check if the field is nil before assigning.
 	// For ProfilePictureURL, if "" is sent, it will update the DB field to empty.
 
-	updateMap := make(map[string]interface{})
-
-	if updateData.Interests != nil { // Check if Interests field was included in JSON
-		updateMap["interests"] = updateData.Interests
+	// Update user fields directly instead of using map to ensure proper JSON serialization
+	if updateData.Interests != nil {
+		user.Interests = updateData.Interests
 	}
-	if updateData.ProfilePictureURL != "" { // Allow setting empty string? Decide based on requirements.
-		updateMap["profile_picture_url"] = updateData.ProfilePictureURL
+	if updateData.ProfilePictureURL != "" {
+		user.ProfilePictureURL = updateData.ProfilePictureURL
 	}
 	if updateData.FirstName != "" {
-		updateMap["first_name"] = updateData.FirstName
+		user.FirstName = updateData.FirstName
 	}
 	if updateData.DateOfBirth != "" {
-		// Add validation for date format here if needed
-		updateMap["date_of_birth"] = updateData.DateOfBirth
+		user.DateOfBirth = updateData.DateOfBirth
 	}
 	if updateData.Gender != "" {
-		// Add validation for allowed gender values
-		updateMap["gender"] = updateData.Gender
+		user.Gender = updateData.Gender
 	}
 	if updateData.InterestedIn != "" {
-		updateMap["interested_in"] = updateData.InterestedIn
+		user.InterestedIn = updateData.InterestedIn
 	}
 	if updateData.LookingFor != "" {
-		updateMap["looking_for"] = updateData.LookingFor
+		user.LookingFor = updateData.LookingFor
 	}
 	if updateData.SexualOrientation != "" {
-		updateMap["sexual_orientation"] = updateData.SexualOrientation
+		user.SexualOrientation = updateData.SexualOrientation
 	}
-	if updateData.Photos != nil { // Check if Photos field was included
-		// Here you might want logic to add/remove photos rather than just replacing
-		// For simplicity now, we replace. Consider a dedicated photo management endpoint.
-		updateMap["photos"] = updateData.Photos
+	if updateData.Photos != nil {
+		user.Photos = updateData.Photos
 	}
-	// Preferences are handled separately, but could be included here if desired
-	// if updateData.AgeRange != "" { updateMap["age_range"] = updateData.AgeRange }
-	// if updateData.Distance != 0 { updateMap["distance"] = updateData.Distance } // Be careful with 0 value updates
-	// if updateData.GenderPreference != "" { updateMap["gender_preference"] = updateData.GenderPreference }
-	if updateData.Latitude != 0 { // Check non-zero, adjust if 0 is valid
-		updateMap["latitude"] = updateData.Latitude
+	if updateData.Latitude != 0 {
+		user.Latitude = updateData.Latitude
 	}
-	if updateData.Longitude != 0 { // Check non-zero, adjust if 0 is valid
-		updateMap["longitude"] = updateData.Longitude
+	if updateData.Longitude != 0 {
+		user.Longitude = updateData.Longitude
 	}
 
 	ctxUpdate, cancelUpdate := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancelUpdate()
-	if err := database.DB.WithContext(ctxUpdate).Model(&user).Updates(updateMap).Error; err != nil {
+	if err := database.DB.WithContext(ctxUpdate).Save(&user).Error; err != nil {
 		respondWithError(c, http.StatusInternalServerError, fmt.Sprintf("Failed to update profile: %v", err))
 		return
 	}
